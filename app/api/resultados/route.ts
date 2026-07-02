@@ -4,35 +4,47 @@ import { getSupabase } from "@/lib/supabase";
 const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
 const BASE_TOTAL = 80;
 
-const OPCIONES = [
-  "Presencial 12 de Julio 8 am",
-  "Presencial 19 de Julio 8 am",
-  "Virtual 10 de Julio 7 pm",
-  "Virtual 15 de Julio 7 pm",
-];
-
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
   if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const supabase = getSupabase();
-  const { data: votos } = await supabase.from("votos").select("*").order("created_at", { ascending: false });
+  const { data: encuestas } = await supabase
+    .from("encuestas")
+    .select("*")
+    .order("created_at", { ascending: true });
 
-  const conteo: Record<string, { votos: number; cantidad: number }> = {};
-  for (const op of OPCIONES) conteo[op] = { votos: 0, cantidad: 0 };
+  const result = [];
+  for (const enc of encuestas ?? []) {
+    const { data: respuestas } = await supabase
+      .from("respuestas_encuesta")
+      .select("*")
+      .eq("encuesta_id", enc.id)
+      .order("created_at", { ascending: false });
 
-  for (const v of votos ?? []) {
-    if (conteo[v.opcion]) {
-      conteo[v.opcion].votos++;
-      conteo[v.opcion].cantidad += v.cantidad || 1;
+    const conteo: Record<string, { votos: number; cantidad: number }> = {};
+    for (const op of enc.opciones) conteo[op] = { votos: 0, cantidad: 0 };
+
+    for (const r of respuestas ?? []) {
+      for (const op of r.opciones_elegidas ?? []) {
+        if (!conteo[op]) conteo[op] = { votos: 0, cantidad: 0 };
+        conteo[op].votos++;
+        conteo[op].cantidad += r.cantidad || 1;
+      }
     }
+
+    result.push({
+      id: enc.id,
+      pregunta: enc.pregunta,
+      tipo: enc.tipo,
+      activa: enc.activa,
+      hanRespondido: (respuestas ?? []).length,
+      faltan: BASE_TOTAL - (respuestas ?? []).length,
+      totalVotantes: BASE_TOTAL,
+      conteo,
+      detalle: respuestas ?? [],
+    });
   }
 
-  return NextResponse.json({
-    totalVotantes: BASE_TOTAL,
-    hanVotado: (votos ?? []).length,
-    faltan: BASE_TOTAL - (votos ?? []).length,
-    conteo,
-    detalle: votos,
-  });
+  return NextResponse.json(result);
 }

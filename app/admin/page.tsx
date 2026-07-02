@@ -6,44 +6,119 @@ const NARANJA = "#E65100";
 const ADMIN_KEY = "portal2026";
 const BASE_TOTAL = 80;
 
-const OPCIONES = [
-  "Presencial 12 de Julio 8 am",
-  "Presencial 19 de Julio 8 am",
-  "Virtual 10 de Julio 7 pm",
-  "Virtual 15 de Julio 7 pm",
-];
-
-interface Resultados {
-  totalVotantes: number;
-  hanVotado: number;
+interface EncuestaResult {
+  id: string;
+  pregunta: string;
+  tipo: string;
+  activa: boolean;
+  hanRespondido: number;
   faltan: number;
+  totalVotantes: number;
   conteo: Record<string, { votos: number; cantidad: number }>;
-  detalle: { correo: string; nombre: string; unidad: string; opcion: string; cantidad: number; created_at: string }[];
+  detalle: any[];
 }
+
+interface EncuestaAdmin {
+  id: string;
+  pregunta: string;
+  opciones: string[];
+  tipo: string;
+  activa: boolean;
+  created_at: string;
+}
+
+const FORM_INIT = { pregunta: "", numOpciones: 2, opciones: ["", ""], tipo: "unica", activa: true };
 
 export default function AdminPage() {
   const [key, setKey] = useState("");
   const [autenticado, setAutenticado] = useState(false);
   const [errorAuth, setErrorAuth] = useState("");
-  const [datos, setDatos] = useState<Resultados | null>(null);
+  const [tab, setTab] = useState<"resultados" | "encuestas">("resultados");
+
+  const [datos, setDatos] = useState<EncuestaResult[]>([]);
+  const [encSeleccionada, setEncSeleccionada] = useState("");
   const [cargando, setCargando] = useState(false);
+
+  const [encuestas, setEncuestas] = useState<EncuestaAdmin[]>([]);
+  const [form, setForm] = useState(FORM_INIT);
+  const [creando, setCreando] = useState(false);
+  const [errForm, setErrForm] = useState("");
 
   const login = () => {
     if (key === ADMIN_KEY) { setAutenticado(true); setErrorAuth(""); }
     else setErrorAuth("Clave incorrecta");
   };
 
-  const cargar = async () => {
+  const cargarResultados = async () => {
     setCargando(true);
     const res = await fetch(`/api/resultados?key=${ADMIN_KEY}`);
     const data = await res.json();
-    setDatos(data);
+    const arr: EncuestaResult[] = Array.isArray(data) ? data : [];
+    setDatos(arr);
+    if (arr.length > 0 && !encSeleccionada) setEncSeleccionada(arr[0].id);
     setCargando(false);
   };
 
-  useEffect(() => { if (autenticado) cargar(); }, [autenticado]);
+  const cargarEncuestas = async () => {
+    const res = await fetch(`/api/admin/encuestas?key=${ADMIN_KEY}`);
+    const data = await res.json();
+    setEncuestas(Array.isArray(data) ? data : []);
+  };
+
+  useEffect(() => {
+    if (autenticado) { cargarResultados(); cargarEncuestas(); }
+  }, [autenticado]);
 
   const pct = (v: number) => BASE_TOTAL > 0 ? Math.round((v / BASE_TOTAL) * 100) : 0;
+
+  const updateNumOpciones = (n: number) => {
+    const curr = form.opciones;
+    const ops = Array.from({ length: n }, (_, i) => curr[i] || "");
+    setForm(f => ({ ...f, numOpciones: n, opciones: ops }));
+  };
+
+  const crearEncuesta = async () => {
+    if (!form.pregunta.trim()) { setErrForm("Escribe la pregunta"); return; }
+    if (form.opciones.some(o => !o.trim())) { setErrForm("Completa todas las opciones"); return; }
+    setCreando(true); setErrForm("");
+    const res = await fetch(`/api/admin/encuestas?key=${ADMIN_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pregunta: form.pregunta.trim(),
+        opciones: form.opciones.map(o => o.trim()),
+        tipo: form.tipo,
+        activa: form.activa,
+      }),
+    });
+    const data = await res.json();
+    if (data.id) {
+      setForm(FORM_INIT);
+      cargarEncuestas();
+      cargarResultados();
+    } else {
+      setErrForm(data.error || "Error al crear");
+    }
+    setCreando(false);
+  };
+
+  const toggleActiva = async (id: string, activa: boolean) => {
+    await fetch(`/api/admin/encuestas/${id}?key=${ADMIN_KEY}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activa: !activa }),
+    });
+    cargarEncuestas();
+  };
+
+  const eliminar = async (id: string) => {
+    if (!confirm("¿Eliminar esta encuesta y todas sus respuestas? Esta acción no se puede deshacer.")) return;
+    await fetch(`/api/admin/encuestas/${id}?key=${ADMIN_KEY}`, { method: "DELETE" });
+    cargarEncuestas();
+    cargarResultados();
+  };
+
+  const encActual = datos.find(e => e.id === encSeleccionada);
 
   if (!autenticado) return (
     <div style={{ minHeight: "100vh", background: VERDE, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, fontFamily: "system-ui" }}>
@@ -67,96 +142,222 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "system-ui", padding: "24px 16px" }}>
-      <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
 
-        <div style={{ background: VERDE, borderRadius: 14, padding: "20px 24px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `4px solid ${NARANJA}` }}>
+        <div style={{ background: VERDE, borderRadius: 14, padding: "20px 24px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `4px solid ${NARANJA}` }}>
           <div>
-            <h1 style={{ color: "#fff", fontWeight: 800, fontSize: 18, margin: 0 }}>Panel de Resultados</h1>
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, margin: "4px 0 0" }}>Asamblea Extraordinaria · Portal de Tocancipá</p>
+            <h1 style={{ color: "#fff", fontWeight: 800, fontSize: 18, margin: 0 }}>Panel Administrador</h1>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, margin: "4px 0 0" }}>Sistema de votación · Portal de Tocancipá</p>
           </div>
-          <button onClick={cargar} disabled={cargando}
+          <button onClick={() => { cargarResultados(); cargarEncuestas(); }} disabled={cargando}
             style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            {cargando ? "Actualizando..." : "↻ Actualizar"}
+            {cargando ? "..." : "↻ Actualizar"}
           </button>
         </div>
 
-        {!datos ? (
-          <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Cargando resultados...</div>
-        ) : (
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"]] as const).map(([t, label]) => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
+                background: tab === t ? VERDE : "#fff", color: tab === t ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "resultados" && (
           <>
-            {/* TARJETAS RESUMEN */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 24 }}>
-              {[
-                { label: "Han votado", value: datos.hanVotado, color: VERDE, bg: "#f1f8e9" },
-                { label: "Faltan por votar", value: datos.faltan, color: NARANJA, bg: "#fff8f0" },
-                { label: "Base total", value: datos.totalVotantes, color: "#555", bg: "#f9f9f9" },
-              ].map(t => (
-                <div key={t.label} style={{ background: t.bg, border: `2px solid ${t.color}30`, borderRadius: 12, padding: "18px 20px" }}>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: t.color }}>{t.value}</div>
-                  <div style={{ fontSize: 13, color: "#666", marginTop: 4, fontWeight: 600 }}>{t.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* BARRA PROGRESO */}
-            <div style={{ background: "#fff", borderRadius: 12, padding: "20px 22px", marginBottom: 24, border: "1px solid #e5e5e5" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>Participación</span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(datos.hanVotado)}%</span>
+            {cargando ? (
+              <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Cargando...</div>
+            ) : datos.length === 0 ? (
+              <div style={{ background: "#fff", borderRadius: 12, padding: 40, textAlign: "center", color: "#888" }}>
+                <p>No hay encuestas creadas aún.</p>
+                <p style={{ fontSize: 13 }}>Ve a la pestaña Encuestas para crear la primera.</p>
               </div>
-              <div style={{ background: "#e5e7eb", borderRadius: 8, height: 18, overflow: "hidden" }}>
-                <div style={{ background: VERDE, width: `${pct(datos.hanVotado)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
-              </div>
-              <p style={{ fontSize: 12, color: "#aaa", margin: "8px 0 0" }}>{datos.hanVotado} de {datos.totalVotantes} copropietarios han votado</p>
-            </div>
+            ) : (
+              <>
+                {datos.length > 1 && (
+                  <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: "#444", marginRight: 10 }}>Encuesta:</label>
+                    <select value={encSeleccionada} onChange={e => setEncSeleccionada(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
+                      {datos.map(e => (
+                        <option key={e.id} value={e.id}>{e.pregunta.length > 60 ? e.pregunta.substring(0, 60) + "..." : e.pregunta}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-            {/* RESULTADOS POR OPCIÓN */}
-            <div style={{ background: "#fff", borderRadius: 12, padding: "20px 22px", marginBottom: 24, border: "1px solid #e5e5e5" }}>
-              <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 16, fontSize: 15 }}>Resultados por opción</h3>
-              {OPCIONES.map(op => {
-                const c = datos.conteo[op] || { votos: 0, cantidad: 0 };
-                const p = datos.hanVotado > 0 ? Math.round((c.votos / datos.hanVotado) * 100) : 0;
-                return (
-                  <div key={op} style={{ marginBottom: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>{op}</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: NARANJA }}>{c.votos} votos · {c.cantidad} cuotas ({p}%)</span>
+                {encActual && (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+                      {[
+                        { label: "Han respondido", value: encActual.hanRespondido, color: VERDE, bg: "#f1f8e9" },
+                        { label: "Faltan", value: encActual.faltan, color: NARANJA, bg: "#fff8f0" },
+                        { label: "Base total", value: encActual.totalVotantes, color: "#555", bg: "#f9f9f9" },
+                      ].map(t => (
+                        <div key={t.label} style={{ background: t.bg, border: `2px solid ${t.color}30`, borderRadius: 12, padding: "16px 18px" }}>
+                          <div style={{ fontSize: 28, fontWeight: 800, color: t.color }}>{t.value}</div>
+                          <div style={{ fontSize: 12, color: "#666", marginTop: 4, fontWeight: 600 }}>{t.label}</div>
+                        </div>
+                      ))}
                     </div>
-                    <div style={{ background: "#f0f0f0", borderRadius: 6, height: 12, overflow: "hidden" }}>
-                      <div style={{ background: NARANJA, width: `${p}%`, height: "100%", borderRadius: 6, transition: "width 0.6s ease" }} />
+
+                    <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>Participación</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.hanRespondido)}%</span>
+                      </div>
+                      <div style={{ background: "#e5e7eb", borderRadius: 8, height: 14, overflow: "hidden" }}>
+                        <div style={{ background: VERDE, width: `${pct(encActual.hanRespondido)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
+                      </div>
+                      <p style={{ fontSize: 12, color: "#aaa", margin: "6px 0 0" }}>{encActual.hanRespondido} de {encActual.totalVotantes} copropietarios</p>
+                    </div>
+
+                    <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
+                      <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 16, fontSize: 15 }}>Resultados</h3>
+                      {Object.entries(encActual.conteo).map(([op, c]) => {
+                        const p = encActual.hanRespondido > 0 ? Math.round((c.votos / encActual.hanRespondido) * 100) : 0;
+                        return (
+                          <div key={op} style={{ marginBottom: 14 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>{op}</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: NARANJA }}>{c.votos} votos ({p}%)</span>
+                            </div>
+                            <div style={{ background: "#f0f0f0", borderRadius: 6, height: 10, overflow: "hidden" }}>
+                              <div style={{ background: NARANJA, width: `${p}%`, height: "100%", borderRadius: 6, transition: "width 0.6s ease" }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {encActual.detalle.length > 0 && (
+                      <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", border: "1px solid #e5e5e5" }}>
+                        <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 14, fontSize: 15 }}>Detalle ({encActual.detalle.length})</h3>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: "#f9f9f9" }}>
+                                {["#", "Nombre", "Unidad", "Opción(es)", "Cuotas", "Fecha"].map(h => (
+                                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#666", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {encActual.detalle.map((v, i) => (
+                                <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                                  <td style={{ padding: "8px 10px", color: "#aaa" }}>{i + 1}</td>
+                                  <td style={{ padding: "8px 10px", fontWeight: 600, color: "#333" }}>{v.nombre}</td>
+                                  <td style={{ padding: "8px 10px", color: "#666" }}>{v.unidad}</td>
+                                  <td style={{ padding: "8px 10px", color: VERDE, fontWeight: 600 }}>{(v.opciones_elegidas ?? []).join(", ")}</td>
+                                  <td style={{ padding: "8px 10px", fontWeight: 700, color: NARANJA }}>{v.cantidad}</td>
+                                  <td style={{ padding: "8px 10px", color: "#aaa" }}>{new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {tab === "encuestas" && (
+          <>
+            <div style={{ background: "#fff", borderRadius: 12, padding: "22px 24px", marginBottom: 20, border: "1px solid #e5e5e5" }}>
+              <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 18, fontSize: 15 }}>Nueva encuesta</h3>
+
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Pregunta</label>
+              <input
+                value={form.pregunta}
+                onChange={e => setForm(f => ({ ...f, pregunta: e.target.value }))}
+                placeholder="Escribe la pregunta de la encuesta..."
+                style={{ width: "100%", border: "2px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 16 }}
+              />
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Tipo de respuesta</label>
+                  <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
+                    <option value="unica">Respuesta única</option>
+                    <option value="multiple">Varias respuestas</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Cantidad de opciones</label>
+                  <select value={form.numOpciones} onChange={e => updateNumOpciones(parseInt(e.target.value))}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
+                    {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} opciones</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 8 }}>Opciones</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {form.opciones.map((op, i) => (
+                  <input key={i} value={op}
+                    onChange={e => {
+                      const ops = [...form.opciones]; ops[i] = e.target.value;
+                      setForm(f => ({ ...f, opciones: ops }));
+                    }}
+                    placeholder={`Opción ${i + 1}`}
+                    style={{ border: "2px solid #ddd", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none" }}
+                  />
+                ))}
+              </div>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 18 }}>
+                <input type="checkbox" checked={form.activa} onChange={e => setForm(f => ({ ...f, activa: e.target.checked }))} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#444" }}>Activar inmediatamente (visible para los copropietarios)</span>
+              </label>
+
+              {errForm && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 10 }}>{errForm}</p>}
+              <button onClick={crearEncuesta} disabled={creando}
+                style={{ background: creando ? "#9e9e9e" : NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "11px 28px", fontSize: 14, fontWeight: 700, cursor: creando ? "not-allowed" : "pointer" }}>
+                {creando ? "Creando..." : "Crear encuesta"}
+              </button>
+            </div>
+
+            <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
+              <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 16, fontSize: 15 }}>Encuestas creadas ({encuestas.length})</h3>
+              {encuestas.length === 0 ? (
+                <p style={{ color: "#aaa", fontSize: 13 }}>No hay encuestas aún. Crea la primera arriba.</p>
+              ) : (
+                encuestas.map(enc => (
+                  <div key={enc.id} style={{ border: "1px solid #e5e5e5", borderRadius: 10, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#333", margin: "0 0 6px" }}>{enc.pregunta}</p>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, background: enc.activa ? "#f1f8e9" : "#f5f5f5", color: enc.activa ? VERDE : "#888", padding: "3px 8px", borderRadius: 20, fontWeight: 700 }}>
+                          {enc.activa ? "● Activa" : "○ Inactiva"}
+                        </span>
+                        <span style={{ fontSize: 11, background: "#f0f0f0", color: "#666", padding: "3px 8px", borderRadius: 20 }}>
+                          {enc.tipo === "multiple" ? "Varias respuestas" : "Respuesta única"}
+                        </span>
+                        <span style={{ fontSize: 11, background: "#f0f0f0", color: "#666", padding: "3px 8px", borderRadius: 20 }}>
+                          {enc.opciones?.length} opciones
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => toggleActiva(enc.id, enc.activa)}
+                        style={{ background: enc.activa ? "#fff3e0" : "#f1f8e9", color: enc.activa ? NARANJA : VERDE, border: `1px solid ${enc.activa ? NARANJA : VERDE}40`, borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        {enc.activa ? "Desactivar" : "Activar"}
+                      </button>
+                      <button onClick={() => eliminar(enc.id)}
+                        style={{ background: "#fff5f5", color: "#ef4444", border: "1px solid #fca5a5", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        Eliminar
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* DETALLE */}
-            <div style={{ background: "#fff", borderRadius: 12, padding: "20px 22px", border: "1px solid #e5e5e5" }}>
-              <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 16, fontSize: 15 }}>Detalle de votos ({datos.detalle.length})</h3>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: "#f9f9f9" }}>
-                      {["#", "Nombre", "Unidad", "Correo", "Opción", "Cuotas", "Fecha"].map(h => (
-                        <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#666", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {datos.detalle.map((v, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                        <td style={{ padding: "10px 12px", color: "#aaa" }}>{i + 1}</td>
-                        <td style={{ padding: "10px 12px", fontWeight: 600, color: "#333" }}>{v.nombre}</td>
-                        <td style={{ padding: "10px 12px", color: "#666" }}>{v.unidad}</td>
-                        <td style={{ padding: "10px 12px", color: "#666", fontSize: 12 }}>{v.correo}</td>
-                        <td style={{ padding: "10px 12px", color: VERDE, fontWeight: 600 }}>{v.opcion}</td>
-                        <td style={{ padding: "10px 12px", fontWeight: 700, color: NARANJA }}>{v.cantidad}</td>
-                        <td style={{ padding: "10px 12px", color: "#aaa", fontSize: 12 }}>{new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                ))
+              )}
             </div>
           </>
         )}
