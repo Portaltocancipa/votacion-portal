@@ -19,8 +19,8 @@ export async function buscarVotante(correo: string): Promise<Votante | null> {
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
-    // Columnas: ID, Unidad, Correo, Cantidad, Nombre Copropietario
-    const [id, unidad, correoSheet, cantidadStr, nombre] = cols;
+    // Columnas: ID, Unidad, Nombre, Correo, Cantidad, Habilitado
+    const [id, unidad, nombre, correoSheet, cantidadStr] = cols;
     if (correoSheet?.toLowerCase() === correo.toLowerCase()) {
       return { id, unidad, correo: correoSheet, cantidad: parseInt(cantidadStr) || 1, nombre };
     }
