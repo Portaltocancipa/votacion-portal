@@ -41,6 +41,7 @@ export default function AdminPage() {
 
   const [encuestas, setEncuestas] = useState<EncuestaAdmin[]>([]);
   const [form, setForm] = useState(FORM_INIT);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [errForm, setErrForm] = useState("");
 
@@ -77,27 +78,63 @@ export default function AdminPage() {
     setForm(f => ({ ...f, numOpciones: n, opciones: ops }));
   };
 
+  const editarEncuesta = (enc: EncuestaAdmin) => {
+    setEditandoId(enc.id);
+    setForm({ pregunta: enc.pregunta, numOpciones: enc.opciones.length, opciones: enc.opciones, tipo: enc.tipo, activa: enc.activa });
+    setErrForm("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelarEdicion = () => {
+    setEditandoId(null);
+    setForm(FORM_INIT);
+    setErrForm("");
+  };
+
   const crearEncuesta = async () => {
     if (!form.pregunta.trim()) { setErrForm("Escribe la pregunta"); return; }
     if (form.opciones.some(o => !o.trim())) { setErrForm("Completa todas las opciones"); return; }
     setCreando(true); setErrForm("");
-    const res = await fetch(`/api/admin/encuestas?key=${ADMIN_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pregunta: form.pregunta.trim(),
-        opciones: form.opciones.map(o => o.trim()),
-        tipo: form.tipo,
-        activa: form.activa,
-      }),
-    });
-    const data = await res.json();
-    if (data.id) {
-      setForm(FORM_INIT);
-      cargarEncuestas();
-      cargarResultados();
+
+    if (editandoId) {
+      const res = await fetch(`/api/admin/encuestas/${editandoId}?key=${ADMIN_KEY}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pregunta: form.pregunta.trim(),
+          opciones: form.opciones.map(o => o.trim()),
+          tipo: form.tipo,
+          activa: form.activa,
+        }),
+      });
+      const data = await res.json();
+      if (data.id) {
+        setEditandoId(null);
+        setForm(FORM_INIT);
+        cargarEncuestas();
+        cargarResultados();
+      } else {
+        setErrForm(data.error || "Error al guardar");
+      }
     } else {
-      setErrForm(data.error || "Error al crear");
+      const res = await fetch(`/api/admin/encuestas?key=${ADMIN_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pregunta: form.pregunta.trim(),
+          opciones: form.opciones.map(o => o.trim()),
+          tipo: form.tipo,
+          activa: form.activa,
+        }),
+      });
+      const data = await res.json();
+      if (data.id) {
+        setForm(FORM_INIT);
+        cargarEncuestas();
+        cargarResultados();
+      } else {
+        setErrForm(data.error || "Error al crear");
+      }
     }
     setCreando(false);
   };
@@ -270,7 +307,17 @@ export default function AdminPage() {
         {tab === "encuestas" && (
           <>
             <div style={{ background: "#fff", borderRadius: 12, padding: "22px 24px", marginBottom: 20, border: "1px solid #e5e5e5" }}>
-              <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 18, fontSize: 15 }}>Nueva encuesta</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                <h3 style={{ fontWeight: 700, color: "#333", fontSize: 15, margin: 0 }}>
+                  {editandoId ? "✏️ Editar encuesta" : "Nueva encuesta"}
+                </h3>
+                {editandoId && (
+                  <button onClick={cancelarEdicion}
+                    style={{ background: "#f5f5f5", color: "#666", border: "1px solid #ddd", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
 
               <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Pregunta</label>
               <input
@@ -320,7 +367,7 @@ export default function AdminPage() {
               {errForm && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 10 }}>{errForm}</p>}
               <button onClick={crearEncuesta} disabled={creando}
                 style={{ background: creando ? "#9e9e9e" : NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "11px 28px", fontSize: 14, fontWeight: 700, cursor: creando ? "not-allowed" : "pointer" }}>
-                {creando ? "Creando..." : "Crear encuesta"}
+                {creando ? "Guardando..." : editandoId ? "Guardar cambios" : "Crear encuesta"}
               </button>
             </div>
 
@@ -346,6 +393,10 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => editarEncuesta(enc)}
+                        style={{ background: "#f0f4ff", color: "#3b5bdb", border: "1px solid #748ffc", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        Editar
+                      </button>
                       <button onClick={() => toggleActiva(enc.id, enc.activa)}
                         style={{ background: enc.activa ? "#fff3e0" : "#f1f8e9", color: enc.activa ? NARANJA : VERDE, border: `1px solid ${enc.activa ? NARANJA : VERDE}40`, borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                         {enc.activa ? "Desactivar" : "Activar"}
