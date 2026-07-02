@@ -32,6 +32,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [popup, setPopup] = useState(false);
   const [popupMsg, setPopupMsg] = useState("");
+  const [popupVoto, setPopupVoto] = useState(false);
   const [fase, setFase] = useState<Fase>("bienvenida");
   const [votante, setVotante] = useState<Votante | null>(null);
   const [encuestas, setEncuestas] = useState<Encuesta[]>([]);
@@ -100,11 +101,8 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.ok) {
-        setEncuestas(prev => {
-          const updated = prev.map(e => e.id === encId ? { ...e, respondida: true, enviando: false } : e);
-          if (updated.every(e => e.respondida)) setFase("gracias");
-          return updated;
-        });
+        setEncuestas(prev => prev.map(e => e.id === encId ? { ...e, respondida: true, enviando: false } : e));
+        setPopupVoto(true);
       } else {
         setEncuestas(prev => prev.map(e => e.id === encId ? { ...e, enviando: false, error: data.error || "Error al enviar" } : e));
       }
@@ -122,6 +120,29 @@ export default function Home() {
             <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
             <p style={{ fontSize: 16, color: "#333", lineHeight: 1.6, marginBottom: 24 }}>{popupMsg}</p>
             <button onClick={() => setPopup(false)} style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
+      {popupVoto && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: "36px 28px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: VERDE, marginBottom: 10 }}>¡Hemos recibido su voto!</h2>
+            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6, marginBottom: 28 }}>
+              Su respuesta ha sido registrada exitosamente. Gracias por participar.
+            </p>
+            <button
+              onClick={() => {
+                setPopupVoto(false);
+                setFase("bienvenida");
+                setCorreo("");
+                setVotante(null);
+                setEncuestas([]);
+              }}
+              style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "13px 40px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
+              Salir
+            </button>
           </div>
         </div>
       )}
@@ -164,7 +185,7 @@ export default function Home() {
                 onChange={e => { setCorreo(e.target.value); setError(""); }}
                 onKeyDown={e => e.key === "Enter" && validar()}
                 placeholder="Ej: copropietario@gmail.com"
-                style={{ width: "100%", border: `2px solid ${error ? "#ef4444" : "#ddd"}`, borderRadius: 10, padding: "13px 16px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                style={{ width: "100%", border: `2px solid ${error ? "#ef4444" : "#ddd"}`, borderRadius: 10, padding: "13px 16px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8, color: "#111" }}
               />
               {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
 
