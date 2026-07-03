@@ -118,7 +118,7 @@ export default function Home() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "32px 28px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-            <p style={{ fontSize: 16, color: "#333", lineHeight: 1.6, marginBottom: 24 }}>{popupMsg}</p>
+            <p style={{ fontSize: 16, color: "#111", lineHeight: 1.6, marginBottom: 24 }}>{popupMsg}</p>
             <button onClick={() => setPopup(false)} style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Cerrar</button>
           </div>
         </div>
@@ -129,7 +129,7 @@ export default function Home() {
           <div style={{ background: "#fff", borderRadius: 16, padding: "36px 28px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: VERDE, marginBottom: 10 }}>¡Hemos recibido su voto!</h2>
-            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6, marginBottom: 28 }}>
+            <p style={{ fontSize: 14, color: "#111", lineHeight: 1.6, marginBottom: 28 }}>
               Su respuesta ha sido registrada exitosamente. Gracias por participar.
             </p>
             <button
@@ -171,12 +171,12 @@ export default function Home() {
                 <div style={{ fontSize: 11, fontWeight: 800, color: VERDE, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
                   VALIDADOR DE CORREO ELECTRÓNICO
                 </div>
-                <p style={{ fontSize: 13, color: "#555", margin: 0 }}>
+                <p style={{ fontSize: 13, color: "#111", margin: 0 }}>
                   Ingrese su correo para verificar su registro y acceder a las votaciones activas.
                 </p>
               </div>
 
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#444", display: "block", marginBottom: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: "#111", display: "block", marginBottom: 8 }}>
                 Correo electrónico
               </label>
               <input
@@ -202,13 +202,13 @@ export default function Home() {
             <>
               <div style={{ background: "#f1f8e9", border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
                 <p style={{ fontSize: 17, fontWeight: 800, color: VERDE, margin: "0 0 2px" }}>Hola, {votante.nombre}</p>
-                <p style={{ fontSize: 13, color: "#555", margin: 0 }}>
+                <p style={{ fontSize: 13, color: "#111", margin: 0 }}>
                   Su voto vale por <strong>{votante.cantidad} {votante.cantidad === 1 ? "cuota" : "cuotas"}</strong>.
                 </p>
               </div>
 
               {encuestas.length === 0 && (
-                <div style={{ textAlign: "center", padding: "40px 0", color: "#888" }}>
+                <div style={{ textAlign: "center", padding: "40px 0", color: "#111" }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                   <p style={{ fontSize: 14 }}>No hay votaciones activas en este momento.</p>
                 </div>
@@ -221,13 +221,13 @@ export default function Home() {
                       <div style={{ fontSize: 30 }}>✅</div>
                       <div>
                         <p style={{ fontSize: 14, fontWeight: 700, color: VERDE, margin: 0 }}>{enc.pregunta}</p>
-                        <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Ya respondiste esta votación · Gracias</p>
+                        <p style={{ fontSize: 12, color: "#111", margin: "4px 0 0" }}>Ya respondiste esta votación · Gracias</p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: "#222", marginBottom: 4 }}>{enc.pregunta}</p>
-                      <p style={{ fontSize: 12, color: "#999", marginBottom: 14 }}>
+                      <p style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{enc.pregunta}</p>
+                      <p style={{ fontSize: 12, color: "#111", marginBottom: 14 }}>
                         {enc.tipo === "multiple" ? "Puede seleccionar varias opciones" : "Seleccione una opción"}
                       </p>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
@@ -268,7 +268,7 @@ export default function Home() {
             <div style={{ textAlign: "center", padding: "20px 0" }}>
               <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: VERDE, marginBottom: 12 }}>¡Gracias por participar!</h2>
-              <p style={{ fontSize: 15, color: "#555", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 15, color: "#111", lineHeight: 1.6 }}>
                 Tus respuestas han sido registradas exitosamente.
               </p>
             </div>
