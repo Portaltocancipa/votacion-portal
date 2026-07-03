@@ -286,20 +286,32 @@ export default function AdminPage() {
                             </thead>
                             <tbody>
                               {encActual.detalle.flatMap((v) => {
-                                let unidades: string[];
-                                try { unidades = JSON.parse(v.unidad); if (!Array.isArray(unidades)) throw 0; }
-                                catch { unidades = v.unidad ? [v.unidad] : []; }
-                                if (unidades.length === 0) unidades = ["—"];
-                                return unidades.map((u, idx) => ({
-                                  ...v, _unidad: u, _idx: idx, _total: unidades.length,
-                                  _key: `${v.correo}-${idx}`,
+                                // Parse stored detalles: [{unidad, nombre, cantidad}] or fallback
+                                let detalles: { unidad: string; nombre: string; cantidad: number }[];
+                                try {
+                                  const p = JSON.parse(v.unidad);
+                                  if (Array.isArray(p) && p[0]?.unidad !== undefined) {
+                                    detalles = p;
+                                  } else if (Array.isArray(p)) {
+                                    detalles = p.map((u: string) => ({ unidad: u, nombre: v.nombre, cantidad: 1 }));
+                                  } else {
+                                    detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }];
+                                  }
+                                } catch {
+                                  detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }];
+                                }
+                                // Expand: one row per cuota (respecting cantidad per detalle)
+                                const filas = detalles.flatMap(d =>
+                                  Array.from({ length: d.cantidad || 1 }, () => ({ unidad: d.unidad, nombre: d.nombre }))
+                                );
+                                return filas.map((f, idx) => ({
+                                  ...v, _unidad: f.unidad, _nombre: f.nombre,
+                                  _idx: idx, _total: filas.length, _key: `${v.correo}-${idx}`,
                                 }));
                               }).map((row, i) => (
                                 <tr key={row._key} style={{ borderBottom: "1px solid #f0f0f0", background: row._idx > 0 ? "#f9fffc" : "#fff" }}>
                                   <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
-                                  <td style={{ padding: "8px 10px", fontWeight: row._idx === 0 ? 600 : 400, color: "#111" }}>
-                                    {row.nombre}{row._total > 1 && row._idx > 0 ? <span style={{ color: NARANJA, fontSize: 11 }}> +1</span> : ""}
-                                  </td>
+                                  <td style={{ padding: "8px 10px", fontWeight: row._idx === 0 ? 700 : 400, color: "#111" }}>{row._nombre}</td>
                                   <td style={{ padding: "8px 10px", fontWeight: 700, color: "#111" }}>{row._unidad}</td>
                                   <td style={{ padding: "8px 10px", color: VERDE, fontWeight: 600 }}>{(row.opciones_elegidas ?? []).join(", ")}</td>
                                   <td style={{ padding: "8px 10px", color: "#111" }}>{row._idx === 0 ? new Date(row.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }) : ""}</td>

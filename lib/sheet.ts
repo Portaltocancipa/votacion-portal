@@ -1,8 +1,15 @@
+export interface VotanteDetalle {
+  unidad: string;
+  nombre: string;
+  cantidad: number;
+}
+
 export interface Votante {
   nombre: string;
   cantidad: number;
   correo: string;
   unidades: string[];
+  detalles: VotanteDetalle[];
 }
 
 export async function buscarVotante(correo: string): Promise<Votante | null> {
@@ -16,23 +23,24 @@ export async function buscarVotante(correo: string): Promise<Votante | null> {
   const text = await res.text();
   const lines = text.trim().split("\n");
 
-  const matches: { unidad: string; nombre: string; cantidad: number }[] = [];
+  const detalles: VotanteDetalle[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
     // Columnas: ID, Unidad, Nombre, Correo, Cantidad, Habilitado
     const [, unidad, nombre, correoSheet, cantidadStr] = cols;
     if (correoSheet?.toLowerCase() === correo.toLowerCase()) {
-      matches.push({ unidad, nombre, cantidad: parseInt(cantidadStr) || 1 });
+      detalles.push({ unidad, nombre, cantidad: parseInt(cantidadStr) || 1 });
     }
   }
 
-  if (matches.length === 0) return null;
+  if (detalles.length === 0) return null;
 
   return {
-    nombre: matches[0].nombre,
+    nombre: detalles[0].nombre,
     correo,
-    cantidad: matches.reduce((s, m) => s + m.cantidad, 0),
-    unidades: matches.map(m => m.unidad).filter(Boolean),
+    cantidad: detalles.reduce((s, d) => s + d.cantidad, 0),
+    unidades: detalles.map(d => d.unidad).filter(Boolean),
+    detalles,
   };
 }

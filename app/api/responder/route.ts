@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     opciones_elegidas,
     cantidad: votante.cantidad,
     nombre: votante.nombre,
-    unidad: JSON.stringify(votante.unidades),
+    unidad: JSON.stringify(votante.detalles),
   });
 
   if (error) {

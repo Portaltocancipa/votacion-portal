@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     opcion,
     cantidad: votante.cantidad,
     nombre: votante.nombre,
-    unidad: JSON.stringify(votante.unidades),
+    unidad: JSON.stringify(votante.detalles),
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
