@@ -217,7 +217,7 @@ export default function AdminPage() {
                   <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
                     <label style={{ fontSize: 13, fontWeight: 700, color: "#111", marginRight: 10 }}>Encuesta:</label>
                     <select value={encSeleccionada} onChange={e => setEncSeleccionada(e.target.value)}
-                      style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
+                      style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13, color: "#111" }}>
                       {datos.map(e => (
                         <option key={e.id} value={e.id}>{e.pregunta.length > 60 ? e.pregunta.substring(0, 60) + "..." : e.pregunta}</option>
                       ))}
@@ -324,14 +324,14 @@ export default function AdminPage() {
                 value={form.pregunta}
                 onChange={e => setForm(f => ({ ...f, pregunta: e.target.value }))}
                 placeholder="Escribe la pregunta de la encuesta..."
-                style={{ width: "100%", border: "2px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 16 }}
+                style={{ width: "100%", border: "2px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 16, color: "#111" }}
               />
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 }}>Tipo de respuesta</label>
                   <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13, color: "#111" }}>
                     <option value="unica">Respuesta única</option>
                     <option value="multiple">Varias respuestas</option>
                   </select>
@@ -339,7 +339,7 @@ export default function AdminPage() {
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 }}>Cantidad de opciones</label>
                   <select value={form.numOpciones} onChange={e => updateNumOpciones(parseInt(e.target.value))}
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13, color: "#111" }}>
                     {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} opciones</option>)}
                   </select>
                 </div>
@@ -354,7 +354,7 @@ export default function AdminPage() {
                       setForm(f => ({ ...f, opciones: ops }));
                     }}
                     placeholder={`Opción ${i + 1}`}
-                    style={{ border: "2px solid #ddd", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none" }}
+                    style={{ border: "2px solid #ddd", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", color: "#111" }}
                   />
                 ))}
               </div>
