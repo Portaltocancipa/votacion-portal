@@ -161,15 +161,15 @@ export default function AdminPage() {
     <div style={{ minHeight: "100vh", background: VERDE, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, fontFamily: "system-ui" }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: "36px 32px", maxWidth: 360, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
         <h2 style={{ fontWeight: 800, color: VERDE, marginBottom: 4, fontSize: 20 }}>Panel Administrador</h2>
-        <p style={{ color: "#888", fontSize: 13, marginBottom: 24 }}>Agrupación El Portal · Tocancipá</p>
-        <label style={{ fontSize: 13, fontWeight: 700, color: "#444", display: "block", marginBottom: 8 }}>Clave de acceso</label>
+        <p style={{ color: "#111", fontSize: 13, marginBottom: 24 }}>Agrupación El Portal · Tocancipá</p>
+        <label style={{ fontSize: 13, fontWeight: 700, color: "#111", display: "block", marginBottom: 8 }}>Clave de acceso</label>
         <input
           type="password"
           value={key}
           onChange={e => setKey(e.target.value)}
           onKeyDown={e => e.key === "Enter" && login()}
           placeholder="••••••••"
-          style={{ width: "100%", border: "2px solid #ddd", borderRadius: 8, padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+          style={{ width: "100%", border: "2px solid #ddd", borderRadius: 8, padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8, color: "#111" }}
         />
         {errorAuth && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }}>{errorAuth}</p>}
         <button onClick={login} style={{ width: "100%", background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "13px", fontSize: 15, fontWeight: 800, cursor: "pointer", marginTop: 4 }}>Ingresar</button>
@@ -205,9 +205,9 @@ export default function AdminPage() {
         {tab === "resultados" && (
           <>
             {cargando ? (
-              <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Cargando...</div>
+              <div style={{ textAlign: "center", padding: 60, color: "#111" }}>Cargando...</div>
             ) : datos.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, padding: 40, textAlign: "center", color: "#888" }}>
+              <div style={{ background: "#fff", borderRadius: 12, padding: 40, textAlign: "center", color: "#111" }}>
                 <p>No hay encuestas creadas aún.</p>
                 <p style={{ fontSize: 13 }}>Ve a la pestaña Encuestas para crear la primera.</p>
               </div>
@@ -215,7 +215,7 @@ export default function AdminPage() {
               <>
                 {datos.length > 1 && (
                   <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
-                    <label style={{ fontSize: 13, fontWeight: 700, color: "#444", marginRight: 10 }}>Encuesta:</label>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: "#111", marginRight: 10 }}>Encuesta:</label>
                     <select value={encSeleccionada} onChange={e => setEncSeleccionada(e.target.value)}
                       style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
                       {datos.map(e => (
@@ -231,34 +231,34 @@ export default function AdminPage() {
                       {[
                         { label: "Han respondido", value: encActual.hanRespondido, color: VERDE, bg: "#f1f8e9" },
                         { label: "Faltan", value: encActual.faltan, color: NARANJA, bg: "#fff8f0" },
-                        { label: "Base total", value: encActual.totalVotantes, color: "#555", bg: "#f9f9f9" },
+                        { label: "Base total", value: encActual.totalVotantes, color: "#111", bg: "#f9f9f9" },
                       ].map(t => (
                         <div key={t.label} style={{ background: t.bg, border: `2px solid ${t.color}30`, borderRadius: 12, padding: "16px 18px" }}>
                           <div style={{ fontSize: 28, fontWeight: 800, color: t.color }}>{t.value}</div>
-                          <div style={{ fontSize: 12, color: "#666", marginTop: 4, fontWeight: 600 }}>{t.label}</div>
+                          <div style={{ fontSize: 12, color: "#111", marginTop: 4, fontWeight: 600 }}>{t.label}</div>
                         </div>
                       ))}
                     </div>
 
                     <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>Participación</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Participación</span>
                         <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.hanRespondido)}%</span>
                       </div>
                       <div style={{ background: "#e5e7eb", borderRadius: 8, height: 14, overflow: "hidden" }}>
                         <div style={{ background: VERDE, width: `${pct(encActual.hanRespondido)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
                       </div>
-                      <p style={{ fontSize: 12, color: "#aaa", margin: "6px 0 0" }}>{encActual.hanRespondido} de {encActual.totalVotantes} copropietarios</p>
+                      <p style={{ fontSize: 12, color: "#111", margin: "6px 0 0" }}>{encActual.hanRespondido} de {encActual.totalVotantes} copropietarios</p>
                     </div>
 
                     <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
-                      <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 16, fontSize: 15 }}>Resultados</h3>
+                      <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 16, fontSize: 15 }}>Resultados</h3>
                       {Object.entries(encActual.conteo).map(([op, c]) => {
                         const p = encActual.hanRespondido > 0 ? Math.round((c.votos / encActual.hanRespondido) * 100) : 0;
                         return (
                           <div key={op} style={{ marginBottom: 14 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>{op}</span>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{op}</span>
                               <span style={{ fontSize: 13, fontWeight: 700, color: NARANJA }}>{c.votos} votos ({p}%)</span>
                             </div>
                             <div style={{ background: "#f0f0f0", borderRadius: 6, height: 10, overflow: "hidden" }}>
@@ -271,25 +271,25 @@ export default function AdminPage() {
 
                     {encActual.detalle.length > 0 && (
                       <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", border: "1px solid #e5e5e5" }}>
-                        <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 14, fontSize: 15 }}>Detalle ({encActual.detalle.length})</h3>
+                        <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 14, fontSize: 15 }}>Detalle ({encActual.detalle.length})</h3>
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "#f9f9f9" }}>
                                 {["#", "Nombre", "Unidad", "Opción(es)", "Cuotas", "Fecha"].map(h => (
-                                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#666", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
+                                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {encActual.detalle.map((v, i) => (
                                 <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                                  <td style={{ padding: "8px 10px", color: "#aaa" }}>{i + 1}</td>
-                                  <td style={{ padding: "8px 10px", fontWeight: 600, color: "#333" }}>{v.nombre}</td>
-                                  <td style={{ padding: "8px 10px", color: "#666" }}>{v.unidad}</td>
+                                  <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
+                                  <td style={{ padding: "8px 10px", fontWeight: 600, color: "#111" }}>{v.nombre}</td>
+                                  <td style={{ padding: "8px 10px", color: "#111" }}>{v.unidad}</td>
                                   <td style={{ padding: "8px 10px", color: VERDE, fontWeight: 600 }}>{(v.opciones_elegidas ?? []).join(", ")}</td>
                                   <td style={{ padding: "8px 10px", fontWeight: 700, color: NARANJA }}>{v.cantidad}</td>
-                                  <td style={{ padding: "8px 10px", color: "#aaa" }}>{new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                                  <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -308,18 +308,18 @@ export default function AdminPage() {
           <>
             <div style={{ background: "#fff", borderRadius: 12, padding: "22px 24px", marginBottom: 20, border: "1px solid #e5e5e5" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                <h3 style={{ fontWeight: 700, color: "#333", fontSize: 15, margin: 0 }}>
+                <h3 style={{ fontWeight: 700, color: "#111", fontSize: 15, margin: 0 }}>
                   {editandoId ? "✏️ Editar encuesta" : "Nueva encuesta"}
                 </h3>
                 {editandoId && (
                   <button onClick={cancelarEdicion}
-                    style={{ background: "#f5f5f5", color: "#666", border: "1px solid #ddd", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    style={{ background: "#f5f5f5", color: "#111", border: "1px solid #ddd", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                     Cancelar
                   </button>
                 )}
               </div>
 
-              <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Pregunta</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 }}>Pregunta</label>
               <input
                 value={form.pregunta}
                 onChange={e => setForm(f => ({ ...f, pregunta: e.target.value }))}
@@ -329,7 +329,7 @@ export default function AdminPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Tipo de respuesta</label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 }}>Tipo de respuesta</label>
                   <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
                     style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
                     <option value="unica">Respuesta única</option>
@@ -337,7 +337,7 @@ export default function AdminPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Cantidad de opciones</label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 }}>Cantidad de opciones</label>
                   <select value={form.numOpciones} onChange={e => updateNumOpciones(parseInt(e.target.value))}
                     style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13 }}>
                     {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} opciones</option>)}
@@ -345,7 +345,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 8 }}>Opciones</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 8 }}>Opciones</label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                 {form.opciones.map((op, i) => (
                   <input key={i} value={op}
@@ -361,7 +361,7 @@ export default function AdminPage() {
 
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 18 }}>
                 <input type="checkbox" checked={form.activa} onChange={e => setForm(f => ({ ...f, activa: e.target.checked }))} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#444" }}>Activar inmediatamente (visible para los copropietarios)</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>Activar inmediatamente (visible para los copropietarios)</span>
               </label>
 
               {errForm && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 10 }}>{errForm}</p>}
@@ -372,22 +372,22 @@ export default function AdminPage() {
             </div>
 
             <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
-              <h3 style={{ fontWeight: 700, color: "#333", marginBottom: 16, fontSize: 15 }}>Encuestas creadas ({encuestas.length})</h3>
+              <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 16, fontSize: 15 }}>Encuestas creadas ({encuestas.length})</h3>
               {encuestas.length === 0 ? (
-                <p style={{ color: "#aaa", fontSize: 13 }}>No hay encuestas aún. Crea la primera arriba.</p>
+                <p style={{ color: "#111", fontSize: 13 }}>No hay encuestas aún. Crea la primera arriba.</p>
               ) : (
                 encuestas.map(enc => (
                   <div key={enc.id} style={{ border: "1px solid #e5e5e5", borderRadius: 10, padding: "14px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: "#333", margin: "0 0 6px" }}>{enc.pregunta}</p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#111", margin: "0 0 6px" }}>{enc.pregunta}</p>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 11, background: enc.activa ? "#f1f8e9" : "#f5f5f5", color: enc.activa ? VERDE : "#888", padding: "3px 8px", borderRadius: 20, fontWeight: 700 }}>
                           {enc.activa ? "● Activa" : "○ Inactiva"}
                         </span>
-                        <span style={{ fontSize: 11, background: "#f0f0f0", color: "#666", padding: "3px 8px", borderRadius: 20 }}>
+                        <span style={{ fontSize: 11, background: "#f0f0f0", color: "#111", padding: "3px 8px", borderRadius: 20 }}>
                           {enc.tipo === "multiple" ? "Varias respuestas" : "Respuesta única"}
                         </span>
-                        <span style={{ fontSize: 11, background: "#f0f0f0", color: "#666", padding: "3px 8px", borderRadius: 20 }}>
+                        <span style={{ fontSize: 11, background: "#f0f0f0", color: "#111", padding: "3px 8px", borderRadius: 20 }}>
                           {enc.opciones?.length} opciones
                         </span>
                       </div>
