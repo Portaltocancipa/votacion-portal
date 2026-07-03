@@ -230,9 +230,9 @@ export default function AdminPage() {
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                       {[
-                        { label: "Personas votaron", value: encActual.personasHanVotado, color: VERDE, bg: "#f1f8e9" },
+                        { label: "Votos recibidos", value: encActual.hanRespondido, color: VERDE, bg: "#f1f8e9" },
                         { label: "Faltan", value: encActual.faltan, color: NARANJA, bg: "#fff8f0" },
-                        { label: "Base total", value: encActual.totalVotantes, color: "#111", bg: "#f9f9f9" },
+                        { label: "Total unidades", value: encActual.totalVotantes, color: "#111", bg: "#f9f9f9" },
                       ].map(t => (
                         <div key={t.label} style={{ background: t.bg, border: `2px solid ${t.color}30`, borderRadius: 12, padding: "16px 18px" }}>
                           <div style={{ fontSize: 28, fontWeight: 800, color: t.color }}>{t.value}</div>
@@ -243,13 +243,13 @@ export default function AdminPage() {
 
                     <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Participación ({encActual.personasHanVotado} personas · {encActual.hanRespondido} cuotas)</span>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.personasHanVotado)}%</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Participación · {encActual.personasHanVotado} personas</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.hanRespondido)}%</span>
                       </div>
                       <div style={{ background: "#e5e7eb", borderRadius: 8, height: 14, overflow: "hidden" }}>
-                        <div style={{ background: VERDE, width: `${pct(encActual.personasHanVotado)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
+                        <div style={{ background: VERDE, width: `${pct(encActual.hanRespondido)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
                       </div>
-                      <p style={{ fontSize: 12, color: "#111", margin: "6px 0 0" }}>{encActual.personasHanVotado} de {encActual.totalVotantes} copropietarios han votado</p>
+                      <p style={{ fontSize: 12, color: "#111", margin: "6px 0 0" }}>Se han recibido <strong>{encActual.hanRespondido}</strong> votos de <strong>{encActual.totalVotantes}</strong> unidades</p>
                     </div>
 
                     <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>

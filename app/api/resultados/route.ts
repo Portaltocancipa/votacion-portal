@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       activa: enc.activa,
       personasHanVotado: (respuestas ?? []).length,
       hanRespondido: totalCuotasVotadas,
-      faltan: BASE_TOTAL - (respuestas ?? []).length,
+      faltan: BASE_TOTAL - totalCuotasVotadas,
       totalVotantes: BASE_TOTAL,
       conteo,
       detalle: respuestas ?? [],
