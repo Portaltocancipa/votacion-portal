@@ -214,17 +214,17 @@ export default function AdminPage() {
               </div>
             ) : (
               <>
-                {datos.length > 1 && (
-                  <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
-                    <label style={{ fontSize: 13, fontWeight: 700, color: "#111", marginRight: 10 }}>Encuesta:</label>
-                    <select value={encSeleccionada} onChange={e => setEncSeleccionada(e.target.value)}
-                      style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13, color: "#111" }}>
-                      {datos.map(e => (
-                        <option key={e.id} value={e.id}>{e.pregunta.length > 60 ? e.pregunta.substring(0, 60) + "..." : e.pregunta}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#111", marginRight: 10 }}>Encuesta:</label>
+                  <select value={encSeleccionada} onChange={e => setEncSeleccionada(e.target.value)}
+                    style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13, color: "#111" }}>
+                    {datos.map(e => (
+                      <option key={e.id} value={e.id}>
+                        {e.activa ? "● " : "○ "}{e.pregunta.length > 55 ? e.pregunta.substring(0, 55) + "..." : e.pregunta}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {encActual && (
                   <>
@@ -272,25 +272,34 @@ export default function AdminPage() {
 
                     {encActual.detalle.length > 0 && (
                       <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", border: "1px solid #e5e5e5" }}>
-                        <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 14, fontSize: 15 }}>Detalle ({encActual.detalle.length})</h3>
+                        <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 14, fontSize: 15 }}>
+                          Detalle · {encActual.personasHanVotado} personas · {encActual.hanRespondido} cuotas
+                        </h3>
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "#f9f9f9" }}>
-                                {["#", "Nombre", "Unidad", "Opción(es)", "Cuotas", "Fecha"].map(h => (
+                                {["#", "Nombre", "Unidad", "Opción(es)", "Fecha"].map(h => (
                                   <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
-                              {encActual.detalle.map((v, i) => (
-                                <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                              {encActual.detalle.flatMap((v) =>
+                                Array.from({ length: v.cantidad || 1 }, (_, cuotaIdx) => ({
+                                  ...v,
+                                  _cuotaIdx: cuotaIdx,
+                                  _key: `${v.correo}-${cuotaIdx}`,
+                                }))
+                              ).map((row, i) => (
+                                <tr key={row._key} style={{ borderBottom: "1px solid #f0f0f0", background: row._cuotaIdx > 0 ? "#fafffe" : "#fff" }}>
                                   <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
-                                  <td style={{ padding: "8px 10px", fontWeight: 600, color: "#111" }}>{v.nombre}</td>
-                                  <td style={{ padding: "8px 10px", color: "#111" }}>{v.unidad}</td>
-                                  <td style={{ padding: "8px 10px", color: VERDE, fontWeight: 600 }}>{(v.opciones_elegidas ?? []).join(", ")}</td>
-                                  <td style={{ padding: "8px 10px", fontWeight: 700, color: NARANJA }}>{v.cantidad}</td>
-                                  <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                                  <td style={{ padding: "8px 10px", fontWeight: row._cuotaIdx === 0 ? 600 : 400, color: "#111" }}>
+                                    {row.nombre}{row._cuotaIdx > 0 ? <span style={{ color: NARANJA, fontSize: 11 }}> (cuota {row._cuotaIdx + 1})</span> : ""}
+                                  </td>
+                                  <td style={{ padding: "8px 10px", color: "#111" }}>{row.unidad}</td>
+                                  <td style={{ padding: "8px 10px", color: VERDE, fontWeight: 600 }}>{(row.opciones_elegidas ?? []).join(", ")}</td>
+                                  <td style={{ padding: "8px 10px", color: "#111" }}>{row._cuotaIdx === 0 ? new Date(row.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }) : ""}</td>
                                 </tr>
                               ))}
                             </tbody>
