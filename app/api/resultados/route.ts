@@ -22,14 +22,16 @@ export async function GET(req: NextRequest) {
       .eq("encuesta_id", enc.id)
       .order("created_at", { ascending: false });
 
-    const conteo: Record<string, { votos: number; cantidad: number }> = {};
-    for (const op of enc.opciones) conteo[op] = { votos: 0, cantidad: 0 };
+    const conteo: Record<string, { votos: number }> = {};
+    for (const op of enc.opciones) conteo[op] = { votos: 0 };
 
+    let totalCuotasVotadas = 0;
     for (const r of respuestas ?? []) {
+      const peso = r.cantidad || 1;
+      totalCuotasVotadas += peso;
       for (const op of r.opciones_elegidas ?? []) {
-        if (!conteo[op]) conteo[op] = { votos: 0, cantidad: 0 };
-        conteo[op].votos++;
-        conteo[op].cantidad += r.cantidad || 1;
+        if (!conteo[op]) conteo[op] = { votos: 0 };
+        conteo[op].votos += peso;
       }
     }
 
@@ -38,7 +40,8 @@ export async function GET(req: NextRequest) {
       pregunta: enc.pregunta,
       tipo: enc.tipo,
       activa: enc.activa,
-      hanRespondido: (respuestas ?? []).length,
+      personasHanVotado: (respuestas ?? []).length,
+      hanRespondido: totalCuotasVotadas,
       faltan: BASE_TOTAL - (respuestas ?? []).length,
       totalVotantes: BASE_TOTAL,
       conteo,

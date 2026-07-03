@@ -200,11 +200,18 @@ export default function Home() {
 
           {fase === "encuestas" && votante && (
             <>
-              <div style={{ background: "#f1f8e9", border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
-                <p style={{ fontSize: 17, fontWeight: 800, color: VERDE, margin: "0 0 2px" }}>Hola, {votante.nombre}</p>
-                <p style={{ fontSize: 13, color: "#111", margin: 0 }}>
-                  Su voto vale por <strong>{votante.cantidad}</strong>.
-                </p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f1f8e9", border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                <div>
+                  <p style={{ fontSize: 17, fontWeight: 800, color: VERDE, margin: "0 0 2px" }}>Hola, {votante.nombre}</p>
+                  <p style={{ fontSize: 13, color: "#111", margin: 0 }}>
+                    Su voto vale por <strong>{votante.cantidad}</strong>.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setFase("bienvenida"); setCorreo(""); setVotante(null); setEncuestas([]); }}
+                  style={{ background: "#fff", color: NARANJA, border: `2px solid ${NARANJA}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                  Salir
+                </button>
               </div>
 
               {encuestas.length === 0 && (

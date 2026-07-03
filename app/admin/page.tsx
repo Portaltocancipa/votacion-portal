@@ -11,10 +11,11 @@ interface EncuestaResult {
   pregunta: string;
   tipo: string;
   activa: boolean;
+  personasHanVotado: number;
   hanRespondido: number;
   faltan: number;
   totalVotantes: number;
-  conteo: Record<string, { votos: number; cantidad: number }>;
+  conteo: Record<string, { votos: number }>;
   detalle: any[];
 }
 
@@ -229,7 +230,7 @@ export default function AdminPage() {
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                       {[
-                        { label: "Han respondido", value: encActual.hanRespondido, color: VERDE, bg: "#f1f8e9" },
+                        { label: "Personas votaron", value: encActual.personasHanVotado, color: VERDE, bg: "#f1f8e9" },
                         { label: "Faltan", value: encActual.faltan, color: NARANJA, bg: "#fff8f0" },
                         { label: "Base total", value: encActual.totalVotantes, color: "#111", bg: "#f9f9f9" },
                       ].map(t => (
@@ -242,13 +243,13 @@ export default function AdminPage() {
 
                     <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Participación</span>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.hanRespondido)}%</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Participación ({encActual.personasHanVotado} personas · {encActual.hanRespondido} cuotas)</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.personasHanVotado)}%</span>
                       </div>
                       <div style={{ background: "#e5e7eb", borderRadius: 8, height: 14, overflow: "hidden" }}>
-                        <div style={{ background: VERDE, width: `${pct(encActual.hanRespondido)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
+                        <div style={{ background: VERDE, width: `${pct(encActual.personasHanVotado)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
                       </div>
-                      <p style={{ fontSize: 12, color: "#111", margin: "6px 0 0" }}>{encActual.hanRespondido} de {encActual.totalVotantes} copropietarios</p>
+                      <p style={{ fontSize: 12, color: "#111", margin: "6px 0 0" }}>{encActual.personasHanVotado} de {encActual.totalVotantes} copropietarios han votado</p>
                     </div>
 
                     <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
