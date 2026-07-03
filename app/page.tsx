@@ -203,7 +203,7 @@ export default function Home() {
               <div style={{ background: "#f1f8e9", border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
                 <p style={{ fontSize: 17, fontWeight: 800, color: VERDE, margin: "0 0 2px" }}>Hola, {votante.nombre}</p>
                 <p style={{ fontSize: 13, color: "#111", margin: 0 }}>
-                  Su voto vale por <strong>{votante.cantidad} {votante.cantidad === 1 ? "cuota" : "cuotas"}</strong>.
+                  Su voto vale por <strong>{votante.cantidad}</strong>.
                 </p>
               </div>
 
