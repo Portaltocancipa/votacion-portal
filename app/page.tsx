@@ -11,7 +11,7 @@ interface Votante {
   nombre: string;
   cantidad: number;
   correo: string;
-  unidad: string;
+  unidades: string[];
 }
 
 interface Encuesta {

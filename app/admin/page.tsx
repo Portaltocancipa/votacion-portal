@@ -285,21 +285,24 @@ export default function AdminPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {encActual.detalle.flatMap((v) =>
-                                Array.from({ length: v.cantidad || 1 }, (_, cuotaIdx) => ({
-                                  ...v,
-                                  _cuotaIdx: cuotaIdx,
-                                  _key: `${v.correo}-${cuotaIdx}`,
-                                }))
-                              ).map((row, i) => (
-                                <tr key={row._key} style={{ borderBottom: "1px solid #f0f0f0", background: row._cuotaIdx > 0 ? "#fafffe" : "#fff" }}>
+                              {encActual.detalle.flatMap((v) => {
+                                let unidades: string[];
+                                try { unidades = JSON.parse(v.unidad); if (!Array.isArray(unidades)) throw 0; }
+                                catch { unidades = v.unidad ? [v.unidad] : []; }
+                                if (unidades.length === 0) unidades = ["—"];
+                                return unidades.map((u, idx) => ({
+                                  ...v, _unidad: u, _idx: idx, _total: unidades.length,
+                                  _key: `${v.correo}-${idx}`,
+                                }));
+                              }).map((row, i) => (
+                                <tr key={row._key} style={{ borderBottom: "1px solid #f0f0f0", background: row._idx > 0 ? "#f9fffc" : "#fff" }}>
                                   <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
-                                  <td style={{ padding: "8px 10px", fontWeight: row._cuotaIdx === 0 ? 600 : 400, color: "#111" }}>
-                                    {row.nombre}{row._cuotaIdx > 0 ? <span style={{ color: NARANJA, fontSize: 11 }}> (cuota {row._cuotaIdx + 1})</span> : ""}
+                                  <td style={{ padding: "8px 10px", fontWeight: row._idx === 0 ? 600 : 400, color: "#111" }}>
+                                    {row.nombre}{row._total > 1 && row._idx > 0 ? <span style={{ color: NARANJA, fontSize: 11 }}> +1</span> : ""}
                                   </td>
-                                  <td style={{ padding: "8px 10px", color: "#111" }}>{row.unidad}</td>
+                                  <td style={{ padding: "8px 10px", fontWeight: 700, color: "#111" }}>{row._unidad}</td>
                                   <td style={{ padding: "8px 10px", color: VERDE, fontWeight: 600 }}>{(row.opciones_elegidas ?? []).join(", ")}</td>
-                                  <td style={{ padding: "8px 10px", color: "#111" }}>{row._cuotaIdx === 0 ? new Date(row.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }) : ""}</td>
+                                  <td style={{ padding: "8px 10px", color: "#111" }}>{row._idx === 0 ? new Date(row.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }) : ""}</td>
                                 </tr>
                               ))}
                             </tbody>
