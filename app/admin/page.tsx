@@ -314,7 +314,7 @@ export default function AdminPage() {
                                   <td style={{ padding: "8px 10px", fontWeight: row._idx === 0 ? 700 : 400, color: "#111" }}>{row._nombre}</td>
                                   <td style={{ padding: "8px 10px", fontWeight: 700, color: "#111" }}>{row._unidad}</td>
                                   <td style={{ padding: "8px 10px", color: VERDE, fontWeight: 600 }}>{(row.opciones_elegidas ?? []).join(", ")}</td>
-                                  <td style={{ padding: "8px 10px", color: "#111" }}>{row._idx === 0 ? new Date(row.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }) : ""}</td>
+                                  <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(row.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
                                 </tr>
                               ))}
                             </tbody>
