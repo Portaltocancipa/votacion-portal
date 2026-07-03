@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
@@ -158,6 +159,37 @@ export default function AdminPage() {
 
   const encActual = datos.find(e => e.id === encSeleccionada);
 
+  const exportarPDF = () => {
+    const style = document.createElement("style");
+    style.id = "__print_style__";
+    style.innerHTML = `@media print { body > * { display: none !important; } #resultados-pdf { display: block !important; } @page { margin: 18mm; } }`;
+    document.head.appendChild(style);
+    window.print();
+    setTimeout(() => document.getElementById("__print_style__")?.remove(), 1000);
+  };
+
+  const exportarXLSX = () => {
+    if (!encActual) return;
+    const filas: any[] = [];
+    encActual.detalle.forEach(v => {
+      let detalles: { unidad: string; nombre: string; cantidad: number }[];
+      try {
+        const p = JSON.parse(v.unidad);
+        if (Array.isArray(p) && p[0]?.unidad !== undefined) detalles = p;
+        else detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }];
+      } catch { detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }]; }
+      const expandidas = detalles.flatMap(d => Array.from({ length: d.cantidad || 1 }, () => ({ unidad: d.unidad, nombre: d.nombre })));
+      const fecha = new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" });
+      expandidas.forEach(f => {
+        filas.push({ Nombre: f.nombre, Unidad: f.unidad, "Opción": (v.opciones_elegidas ?? []).join(", "), Fecha: fecha });
+      });
+    });
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Detalle");
+    XLSX.writeFile(wb, `resultados_${encActual.pregunta.substring(0, 30).replace(/\s+/g, "_")}.xlsx`);
+  };
+
   if (!autenticado) return (
     <div style={{ minHeight: "100vh", background: VERDE, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, fontFamily: "system-ui" }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: "36px 32px", maxWidth: 360, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
@@ -214,20 +246,26 @@ export default function AdminPage() {
               </div>
             ) : (
               <>
-                <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#111", marginRight: 10 }}>Encuesta:</label>
-                  <select value={encSeleccionada} onChange={e => setEncSeleccionada(e.target.value)}
-                    style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13, color: "#111" }}>
-                    {datos.map(e => (
-                      <option key={e.id} value={e.id}>
-                        {e.activa ? "● " : "○ "}{e.pregunta.length > 55 ? e.pregunta.substring(0, 55) + "..." : e.pregunta}
-                      </option>
-                    ))}
-                  </select>
+                <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", marginBottom: 16, border: "1px solid #e5e5e5", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: "#111", marginRight: 10 }}>Encuesta:</label>
+                    <select value={encSeleccionada} onChange={e => setEncSeleccionada(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: 8, border: "2px solid #ddd", fontSize: 13, color: "#111" }}>
+                      {datos.map(e => (
+                        <option key={e.id} value={e.id}>
+                          {e.activa ? "● " : "○ "}{e.pregunta.length > 55 ? e.pregunta.substring(0, 55) + "..." : e.pregunta}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button onClick={exportarPDF}
+                    style={{ background: VERDE, color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                    ⬇ Exportar PDF
+                  </button>
                 </div>
 
                 {encActual && (
-                  <>
+                  <div id="resultados-pdf">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                       {[
                         { label: "Votos recibidos", value: encActual.hanRespondido, color: VERDE, bg: "#f1f8e9" },
@@ -272,9 +310,15 @@ export default function AdminPage() {
 
                     {encActual.detalle.length > 0 && (
                       <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", border: "1px solid #e5e5e5" }}>
-                        <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 14, fontSize: 15 }}>
-                          Detalle · {encActual.personasHanVotado} personas · {encActual.hanRespondido} cuotas
-                        </h3>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                          <h3 style={{ fontWeight: 700, color: "#111", fontSize: 15, margin: 0 }}>
+                            Detalle · {encActual.personasHanVotado} personas · {encActual.hanRespondido} cuotas
+                          </h3>
+                          <button onClick={exportarXLSX}
+                            style={{ background: "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                            ⬇ Exportar Excel
+                          </button>
+                        </div>
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
@@ -322,7 +366,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </>
             )}
