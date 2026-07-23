@@ -41,8 +41,8 @@ const FORM_INIT = {
   es_titular_arriendo: false,
 };
 
-const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula", "ciudad"];
-const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["direccion"];
+const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula"];
+const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["direccion", "ciudad"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
@@ -303,10 +303,12 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
             )}
           </div>
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Ciudad</label>
-            <input value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="TOCANCIPÁ"/>
-          </div>
+          {esPropietarios && (
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Ciudad</label>
+              <input value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="TOCANCIPÁ"/>
+            </div>
+          )}
 
           <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 14 }}>
             <input type="checkbox" checked={form.es_contacto_principal} onChange={e => setForm(f => ({ ...f, es_contacto_principal: e.target.checked }))}/>

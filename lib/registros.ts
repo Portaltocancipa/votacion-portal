@@ -33,8 +33,10 @@ export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInpu
     return "Falta el correo electrónico";
   }
   if (!body.numero_matricula) return "Falta el número de matrícula inmobiliaria";
-  if (!body.ciudad) return "Falta la ciudad";
-  if (tabla === "propietarios" && !body.direccion) return "Falta la dirección";
+  if (tabla === "propietarios") {
+    if (!body.direccion) return "Falta la dirección";
+    if (!body.ciudad) return "Falta la ciudad";
+  }
   return null;
 }
 

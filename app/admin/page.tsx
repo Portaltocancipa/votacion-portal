@@ -346,8 +346,7 @@ export default function AdminPage() {
       Teléfono: r.telefono || "",
       "Correo contacto": r.correo_contacto || "",
       "N° Matrícula": r.numero_matricula || "",
-      ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "" } : {}),
-      Ciudad: r.ciudad || "",
+      ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "", Ciudad: r.ciudad || "" } : {}),
       "Correo cuenta": r.correo,
     }));
     const ws = XLSX.utils.json_to_sheet(filas);
@@ -370,8 +369,7 @@ export default function AdminPage() {
       "Contacto principal": r.es_contacto_principal ? "Sí" : "No",
       ...(registrosTipo === "residentes" ? { "Titular del Arriendo": r.es_titular_arriendo ? "Sí" : "No" } : {}),
       "N° Matrícula": r.numero_matricula || "",
-      ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "" } : {}),
-      Ciudad: r.ciudad || "",
+      ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "", Ciudad: r.ciudad || "" } : {}),
       "Correo cuenta": r.correo,
       "Fecha registro": new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
     }));
@@ -748,7 +746,7 @@ export default function AdminPage() {
                       {[
                         "#", "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
                         ...(registrosTipo === "residentes" ? ["Arriendo"] : []),
-                        "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección"] : []), "Ciudad",
+                        "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección", "Ciudad"] : []),
                         "Fecha registro",
                         ...(verEliminados ? [""] : []),
                       ].map(h => (
@@ -773,9 +771,11 @@ export default function AdminPage() {
                         )}
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
                         {registrosTipo === "propietarios" && (
-                          <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
+                          <>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
+                          </>
                         )}
-                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
                         {verEliminados && (
                           <td style={{ padding: "8px 10px" }}>
@@ -827,7 +827,7 @@ export default function AdminPage() {
                     <tr style={{ background: "#f9f9f9" }}>
                       {[
                         "#", "Unidad", "Nombres", "Apellidos", "Documento", "Edad", "Teléfono", "Correo contacto",
-                        "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección"] : []), "Ciudad", "Correo cuenta",
+                        "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección", "Ciudad"] : []), "Correo cuenta",
                       ].map(h => (
                         <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
                       ))}
@@ -846,9 +846,11 @@ export default function AdminPage() {
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo_contacto || "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
                         {registrosTipo === "propietarios" && (
-                          <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
+                          <>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
+                          </>
                         )}
-                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo}</td>
                       </tr>
                     ))}
