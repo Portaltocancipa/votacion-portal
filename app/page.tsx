@@ -28,6 +28,7 @@ interface Encuesta {
 
 export default function Home() {
   const [correo, setCorreo] = useState("");
+  const [token, setToken] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [popup, setPopup] = useState(false);
@@ -39,17 +40,25 @@ export default function Home() {
 
   const validar = async () => {
     const c = correo.trim().toLowerCase();
+    const t = token.trim();
     if (!c) { setError("Ingresa tu correo electrónico"); return; }
+    if (!t) { setError("Ingresa tu token de acceso"); return; }
     setCargando(true); setError("");
     try {
       const res = await fetch("/api/validar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo: c }),
+        body: JSON.stringify({ correo: c, token: t }),
       });
       const data = await res.json();
       if (!data.encontrado) {
         setPopupMsg("Correo no encontrado. Si tienes inquietudes comunícate con la administradora.");
+        setPopup(true);
+      } else if (!data.habilitado) {
+        setPopupMsg("Usted no está habilitado para votar. Comuníquese con la administradora.");
+        setPopup(true);
+      } else if (!data.tokenValido) {
+        setPopupMsg("Token incorrecto. Verifique el token enviado y vuelva a intentarlo.");
         setPopup(true);
       } else {
         setVotante(data.votante);
@@ -137,6 +146,7 @@ export default function Home() {
                 setPopupVoto(false);
                 setFase("bienvenida");
                 setCorreo("");
+                setToken("");
                 setVotante(null);
                 setEncuestas([]);
               }}
@@ -169,10 +179,10 @@ export default function Home() {
             <>
               <div style={{ background: "#f1f8e9", border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: "18px 20px", marginBottom: 28 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: VERDE, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
-                  VALIDADOR DE CORREO ELECTRÓNICO
+                  VALIDADOR DE ACCESO
                 </div>
                 <p style={{ fontSize: 13, color: "#111", margin: 0 }}>
-                  Ingrese su correo para verificar su registro y acceder a las votaciones activas.
+                  Ingrese su correo y el token de acceso enviado por la administradora para participar en las votaciones.
                 </p>
               </div>
 
@@ -185,6 +195,18 @@ export default function Home() {
                 onChange={e => { setCorreo(e.target.value); setError(""); }}
                 onKeyDown={e => e.key === "Enter" && validar()}
                 placeholder="Ej: copropietario@gmail.com"
+                style={{ width: "100%", border: `2px solid ${error ? "#ef4444" : "#ddd"}`, borderRadius: 10, padding: "13px 16px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, color: "#111" }}
+              />
+
+              <label style={{ fontSize: 13, fontWeight: 700, color: "#111", display: "block", marginBottom: 8 }}>
+                Token de acceso
+              </label>
+              <input
+                type="text"
+                value={token}
+                onChange={e => { setToken(e.target.value); setError(""); }}
+                onKeyDown={e => e.key === "Enter" && validar()}
+                placeholder="Ej: ABC123"
                 style={{ width: "100%", border: `2px solid ${error ? "#ef4444" : "#ddd"}`, borderRadius: 10, padding: "13px 16px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8, color: "#111" }}
               />
               {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
@@ -208,7 +230,7 @@ export default function Home() {
                   </p>
                 </div>
                 <button
-                  onClick={() => { setFase("bienvenida"); setCorreo(""); setVotante(null); setEncuestas([]); }}
+                  onClick={() => { setFase("bienvenida"); setCorreo(""); setToken(""); setVotante(null); setEncuestas([]); }}
                   style={{ background: "#fff", color: NARANJA, border: `2px solid ${NARANJA}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
                   Salir
                 </button>

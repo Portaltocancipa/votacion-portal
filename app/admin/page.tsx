@@ -42,6 +42,8 @@ export default function AdminPage() {
   const [cargando, setCargando] = useState(false);
 
   const [encuestas, setEncuestas] = useState<EncuestaAdmin[]>([]);
+  const [faltanUnidades, setFaltanUnidades] = useState<string[]>([]);
+  const [cargandoFaltan, setCargandoFaltan] = useState(false);
   const [form, setForm] = useState(FORM_INIT);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
@@ -62,6 +64,14 @@ export default function AdminPage() {
     setCargando(false);
   };
 
+  const cargarFaltan = async (encuesta_id: string) => {
+    setCargandoFaltan(true);
+    const res = await fetch(`/api/admin/faltan?key=${ADMIN_KEY}&encuesta_id=${encuesta_id}`);
+    const data = await res.json();
+    setFaltanUnidades(Array.isArray(data.faltan) ? data.faltan : []);
+    setCargandoFaltan(false);
+  };
+
   const cargarEncuestas = async () => {
     const res = await fetch(`/api/admin/encuestas?key=${ADMIN_KEY}`);
     const data = await res.json();
@@ -71,6 +81,23 @@ export default function AdminPage() {
   useEffect(() => {
     if (autenticado) { cargarResultados(); cargarEncuestas(); }
   }, [autenticado]);
+
+  useEffect(() => {
+    if (encSeleccionada) cargarFaltan(encSeleccionada);
+  }, [encSeleccionada]);
+
+  useEffect(() => {
+    if (!autenticado || tab !== "resultados") return;
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/resultados?key=${ADMIN_KEY}`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setDatos(data);
+        if (encSeleccionada) cargarFaltan(encSeleccionada);
+      }
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [autenticado, tab, encSeleccionada]);
 
   const pct = (v: number) => BASE_TOTAL > 0 ? Math.round((v / BASE_TOTAL) * 100) : 0;
 
@@ -366,6 +393,25 @@ export default function AdminPage() {
                         </div>
                       </div>
                     )}
+                    <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginTop: 16, border: `2px solid ${NARANJA}30` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                        <h3 style={{ fontWeight: 700, color: NARANJA, fontSize: 15, margin: 0 }}>
+                          Faltan por votar ({faltanUnidades.length} unidades)
+                        </h3>
+                        {cargandoFaltan && <span style={{ fontSize: 12, color: "#111" }}>Cargando...</span>}
+                      </div>
+                      {faltanUnidades.length === 0 && !cargandoFaltan ? (
+                        <p style={{ color: "#111", fontSize: 13, margin: 0 }}>✅ Todas las unidades han votado.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {faltanUnidades.map(u => (
+                            <span key={u} style={{ background: "#fff8f0", border: `1px solid ${NARANJA}50`, borderRadius: 6, padding: "4px 12px", fontSize: 13, fontWeight: 700, color: NARANJA }}>
+                              {u}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </>
