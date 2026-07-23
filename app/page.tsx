@@ -268,11 +268,11 @@ export default function Home() {
           )}
 
           {fase === "residentes" && votante && (
-            <RegistroModulo tipo="residentes" titulo="Registro y actualización de residentes" correo={votante.correo} unidades={votante.unidades} onVolver={() => setFase("menu")}/>
+            <RegistroModulo tipo="residentes" titulo="Registro y actualización de residentes" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
           )}
 
           {fase === "propietarios" && votante && (
-            <RegistroModulo tipo="propietarios" titulo="Registro y actualización de propietarios" correo={votante.correo} unidades={votante.unidades} onVolver={() => setFase("menu")}/>
+            <RegistroModulo tipo="propietarios" titulo="Registro y actualización de propietarios" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
           )}
 
           {fase === "encuestas" && votante && (

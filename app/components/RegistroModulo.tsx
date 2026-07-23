@@ -28,6 +28,7 @@ interface Props {
   titulo: string;
   correo: string;
   unidades: string[];
+  token: string;
   onVolver: () => void;
 }
 
@@ -44,7 +45,7 @@ const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["numero_matr
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
 
-export default function RegistroModulo({ tipo, titulo, correo, unidades, onVolver }: Props) {
+export default function RegistroModulo({ tipo, titulo, correo, unidades, token, onVolver }: Props) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [cargando, setCargando] = useState(true);
   const [verTodos, setVerTodos] = useState(false);
@@ -54,6 +55,9 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, onVolve
   const [aceptaTratamiento, setAceptaTratamiento] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [borrandoId, setBorrandoId] = useState<string | null>(null);
+  const [confirmarBorrarId, setConfirmarBorrarId] = useState<string | null>(null);
+  const [tokenBorrado, setTokenBorrado] = useState("");
+  const [errorBorrado, setErrorBorrado] = useState("");
   const [error, setError] = useState("");
   const [errorCarga, setErrorCarga] = useState("");
 
@@ -94,15 +98,28 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, onVolve
     setMostrarForm(true);
   };
 
-  const borrar = async (id: string) => {
-    if (!confirm("¿Quitar este registro de tu lista? No se elimina de la base de datos, la administración conserva el histórico.")) return;
-    setBorrandoId(id);
-    await fetch(`/api/${tipo}/${id}`, {
+  const pedirConfirmacionBorrar = (id: string) => {
+    setConfirmarBorrarId(id); setTokenBorrado(""); setErrorBorrado("");
+  };
+
+  const cancelarBorrado = () => {
+    setConfirmarBorrarId(null); setTokenBorrado(""); setErrorBorrado("");
+  };
+
+  const confirmarBorrado = async () => {
+    if (!confirmarBorrarId) return;
+    if (tokenBorrado.trim().toLowerCase() !== token.trim().toLowerCase()) {
+      setErrorBorrado("Token incorrecto");
+      return;
+    }
+    setBorrandoId(confirmarBorrarId);
+    await fetch(`/api/${tipo}/${confirmarBorrarId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ correo }),
     });
     setBorrandoId(null);
+    cancelarBorrado();
     cargar();
   };
 
@@ -177,7 +194,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, onVolve
                   style={{ background: "#f0f4ff", color: "#3b5bdb", border: "1px solid #748ffc", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   Editar
                 </button>
-                <button onClick={() => borrar(r.id)} disabled={borrandoId === r.id}
+                <button onClick={() => pedirConfirmacionBorrar(r.id)} disabled={borrandoId === r.id}
                   style={{ background: "#fff5f5", color: "#ef4444", border: "1px solid #fca5a5", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: borrandoId === r.id ? "not-allowed" : "pointer" }}>
                   {borrandoId === r.id ? "..." : "Borrar"}
                 </button>
@@ -308,6 +325,37 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, onVolve
               style={{ flex: 1, background: guardando ? "#9e9e9e" : NARANJA, color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 13, fontWeight: 800, cursor: guardando ? "not-allowed" : "pointer" }}>
               {guardando ? "Guardando..." : editandoId ? "Guardar cambios" : "Guardar"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {confirmarBorrarId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: "28px 26px", maxWidth: 380, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "#111", margin: "0 0 6px" }}>Confirmar borrado</h3>
+            <p style={{ fontSize: 13, color: "#555", lineHeight: 1.5, margin: "0 0 16px" }}>
+              Para ejecutar esta acción ingrese el token de acceso.
+            </p>
+            <input
+              type="text"
+              value={tokenBorrado}
+              onChange={e => { setTokenBorrado(e.target.value); setErrorBorrado(""); }}
+              onKeyDown={e => e.key === "Enter" && confirmarBorrado()}
+              placeholder="Token de acceso"
+              autoFocus
+              style={{ width: "100%", border: `2px solid ${errorBorrado ? "#ef4444" : "#ddd"}`, borderRadius: 10, padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", color: "#111", marginBottom: 8 }}
+            />
+            {errorBorrado && <p style={{ color: "#ef4444", fontSize: 13, margin: "0 0 8px" }}>{errorBorrado}</p>}
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <button onClick={cancelarBorrado}
+                style={{ flex: 1, background: "#fff", color: "#555", border: "2px solid #ddd", borderRadius: 10, padding: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                Cancelar
+              </button>
+              <button onClick={confirmarBorrado} disabled={borrandoId === confirmarBorrarId}
+                style={{ flex: 1, background: borrandoId === confirmarBorrarId ? "#9e9e9e" : "#ef4444", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 13, fontWeight: 800, cursor: borrandoId === confirmarBorrarId ? "not-allowed" : "pointer" }}>
+                {borrandoId === confirmarBorrarId ? "Borrando..." : "Borrar"}
+              </button>
+            </div>
           </div>
         </div>
       )}
