@@ -138,7 +138,7 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
   return (
     <>
       <button onClick={onVolver} style={{ background: "none", border: "none", color: VERDE, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 16 }}>
-        ← Volver al menú
+        Volver al menú
       </button>
 
       <h2 style={{ fontSize: 18, fontWeight: 800, color: VERDE, marginBottom: 4 }}>Parqueadero</h2>
@@ -163,7 +163,7 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
             <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>
-                  {r.tipo_vehiculo === "Moto" ? "🏍️" : "🚗"} {r.placa} — {r.marca} {r.modelo}
+                  {r.placa} — {r.marca} {r.modelo} ({r.tipo_vehiculo})
                 </p>
                 <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
                   Parqueadero {r.numero_parqueadero} · {formatUnidad(r.unidad)}

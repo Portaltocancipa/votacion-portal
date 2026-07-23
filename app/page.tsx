@@ -133,7 +133,6 @@ export default function Home() {
       {popup && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "32px 28px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
             <p style={{ fontSize: 16, color: "#111", lineHeight: 1.6, marginBottom: 24 }}>{popupMsg}</p>
             <button onClick={() => setPopup(false)} style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Cerrar</button>
           </div>
@@ -143,7 +142,6 @@ export default function Home() {
       {popupVoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "36px 28px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: VERDE, marginBottom: 10 }}>¡Hemos recibido su voto!</h2>
             <p style={{ fontSize: 14, color: "#111", lineHeight: 1.6, marginBottom: 28 }}>
               Su respuesta ha sido registrada exitosamente. Gracias por participar.
@@ -151,7 +149,7 @@ export default function Home() {
             <button
               onClick={() => { setPopupVoto(false); setFase("menu"); }}
               style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "13px 40px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
-              ← Volver al menú
+              Volver al menú
             </button>
           </div>
         </div>
@@ -236,7 +234,6 @@ export default function Home() {
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <button onClick={votante.puedeVotar ? abrirVotaciones : undefined} disabled={!votante.puedeVotar}
                   style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: votante.puedeVotar ? "#fff" : "#f5f5f5", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: votante.puedeVotar ? "pointer" : "not-allowed", opacity: votante.puedeVotar ? 1 : 0.6 }}>
-                  <div style={{ fontSize: 28 }}>🗳️</div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Votaciones</p>
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>
@@ -249,7 +246,6 @@ export default function Home() {
 
                 <button onClick={() => setFase("residentes")}
                   style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
-                  <div style={{ fontSize: 28 }}>🏠</div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Registro y actualización de residentes</p>
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Mantén al día quiénes viven en tu unidad</p>
@@ -258,7 +254,6 @@ export default function Home() {
 
                 <button onClick={() => setFase("propietarios")}
                   style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
-                  <div style={{ fontSize: 28 }}>📑</div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Registro y actualización de propietarios</p>
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Mantén al día los propietarios de tu unidad</p>
@@ -267,7 +262,6 @@ export default function Home() {
 
                 <button onClick={() => setFase("parqueadero")}
                   style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
-                  <div style={{ fontSize: 28 }}>🚗</div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Parqueadero</p>
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Registra los vehículos de tu unidad</p>
@@ -300,13 +294,12 @@ export default function Home() {
                 </div>
                 <button onClick={() => setFase("menu")}
                   style={{ background: "#fff", color: VERDE, border: `2px solid ${VERDE}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                  ← Menú
+                  Menú
                 </button>
               </div>
 
               {encuestas.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 0", color: "#111" }}>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                   <p style={{ fontSize: 14 }}>No hay votaciones activas en este momento.</p>
                 </div>
               )}
@@ -314,12 +307,9 @@ export default function Home() {
               {encuestas.map(enc => (
                 <div key={enc.id} style={{ border: `2px solid ${enc.respondida ? VERDE : "#e5e7eb"}`, borderRadius: 14, padding: "20px", marginBottom: 16, background: enc.respondida ? "#f1f8e9" : "#fff" }}>
                   {enc.respondida ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ fontSize: 30 }}>✅</div>
-                      <div>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: VERDE, margin: 0 }}>{enc.pregunta}</p>
-                        <p style={{ fontSize: 12, color: "#111", margin: "4px 0 0" }}>Ya respondiste esta votación · Gracias</p>
-                      </div>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: VERDE, margin: 0 }}>{enc.pregunta}</p>
+                      <p style={{ fontSize: 12, color: "#111", margin: "4px 0 0" }}>Ya respondiste esta votación · Gracias</p>
                     </div>
                   ) : (
                     <>
@@ -363,14 +353,13 @@ export default function Home() {
 
           {fase === "gracias" && (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: VERDE, marginBottom: 12 }}>¡Gracias por participar!</h2>
               <p style={{ fontSize: 15, color: "#111", lineHeight: 1.6, marginBottom: 24 }}>
                 Tus respuestas han sido registradas exitosamente.
               </p>
               <button onClick={() => setFase("menu")}
                 style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 10, padding: "13px 32px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
-                ← Volver al menú
+                Volver al menú
               </button>
             </div>
           )}

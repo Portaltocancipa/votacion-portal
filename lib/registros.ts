@@ -16,6 +16,7 @@ export interface RegistroInput {
   ciudad?: string;
   correo_contacto?: string;
   es_contacto_principal?: boolean;
+  es_titular_arriendo?: boolean;
   unidad?: string;
 }
 
@@ -49,18 +50,23 @@ export async function listarPorCorreo(tabla: TablaRegistro, correo: string) {
   return data ?? [];
 }
 
-async function verificarContactoUnico(tabla: TablaRegistro, correo: string, excluirId?: string) {
+async function verificarFlagUnico(tabla: TablaRegistro, campo: "es_contacto_principal" | "es_titular_arriendo", correo: string, mensajeError: string, excluirId?: string) {
   const supabase = getSupabase();
-  let query = supabase.from(tabla).select("id").eq("correo", correo.toLowerCase()).eq("es_contacto_principal", true);
+  let query = supabase.from(tabla).select("id").eq("correo", correo.toLowerCase()).eq(campo, true);
   if (excluirId) query = query.neq("id", excluirId);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  if (data && data.length > 0) throw new Error("Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.");
+  if (data && data.length > 0) throw new Error(mensajeError);
 }
 
 export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput) {
   const supabase = getSupabase();
-  if (input.es_contacto_principal) await verificarContactoUnico(tabla, input.correo);
+  if (input.es_contacto_principal) {
+    await verificarFlagUnico(tabla, "es_contacto_principal", input.correo, "Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.");
+  }
+  if (input.es_titular_arriendo) {
+    await verificarFlagUnico(tabla, "es_titular_arriendo", input.correo, "Ya hay un titular del arriendo seleccionado. Desmárcalo antes de elegir otro.");
+  }
 
   const { data, error } = await supabase
     .from(tabla)
@@ -78,7 +84,12 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
   if (!existente) throw new Error("Registro no encontrado");
   if (existente.correo.toLowerCase() !== correo.toLowerCase()) throw new Error("No autorizado para editar este registro");
 
-  if (input.es_contacto_principal) await verificarContactoUnico(tabla, correo, id);
+  if (input.es_contacto_principal) {
+    await verificarFlagUnico(tabla, "es_contacto_principal", correo, "Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.", id);
+  }
+  if (input.es_titular_arriendo) {
+    await verificarFlagUnico(tabla, "es_titular_arriendo", correo, "Ya hay un titular del arriendo seleccionado. Desmárcalo antes de elegir otro.", id);
+  }
 
   const { correo: correoInput, ...campos } = input;
   void correoInput;

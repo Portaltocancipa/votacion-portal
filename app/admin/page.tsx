@@ -20,6 +20,7 @@ interface RegistroAdmin {
   fecha_nacimiento: string;
   correo_contacto: string;
   es_contacto_principal: boolean;
+  es_titular_arriendo?: boolean;
   unidad?: string;
   eliminado?: boolean;
   numero_matricula?: string;
@@ -367,6 +368,7 @@ export default function AdminPage() {
       Edad: calcularEdad(r.fecha_nacimiento),
       "Correo contacto": r.correo_contacto || "",
       "Contacto principal": r.es_contacto_principal ? "Sí" : "No",
+      ...(registrosTipo === "residentes" ? { "Titular del Arriendo": r.es_titular_arriendo ? "Sí" : "No" } : {}),
       "N° Matrícula": r.numero_matricula || "",
       ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "" } : {}),
       Ciudad: r.ciudad || "",
@@ -410,12 +412,12 @@ export default function AdminPage() {
           </div>
           <button onClick={() => { cargarResultados(); cargarEncuestas(); }} disabled={cargando}
             style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            {cargando ? "..." : "↻ Actualizar"}
+            {cargando ? "..." : "Actualizar"}
           </button>
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"], ["registros", "🏠 Registros"], ["contactos", "📞 Contactos"], ["parqueaderos", "🚗 Parqueaderos"]] as const).map(([t, label]) => (
+          {([["resultados", "Resultados"], ["encuestas", "Encuestas"], ["registros", "Registros"], ["contactos", "Contactos"], ["parqueaderos", "Parqueaderos"]] as const).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
                 background: tab === t ? VERDE : "#fff", color: tab === t ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
@@ -449,7 +451,7 @@ export default function AdminPage() {
                   </div>
                   <button onClick={exportarPDF}
                     style={{ background: VERDE, color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                    ⬇ Exportar PDF
+                    Exportar PDF
                   </button>
                 </div>
 
@@ -505,7 +507,7 @@ export default function AdminPage() {
                           </h3>
                           <button onClick={exportarXLSX}
                             style={{ background: "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                            ⬇ Exportar Excel
+                            Exportar Excel
                           </button>
                         </div>
                         <div style={{ overflowX: "auto" }}>
@@ -563,7 +565,7 @@ export default function AdminPage() {
                         {cargandoFaltan && <span style={{ fontSize: 12, color: "#111" }}>Cargando...</span>}
                       </div>
                       {faltanUnidades.length === 0 && !cargandoFaltan ? (
-                        <p style={{ color: "#111", fontSize: 13, margin: 0 }}>✅ Todas las unidades han votado.</p>
+                        <p style={{ color: "#111", fontSize: 13, margin: 0 }}>Todas las unidades han votado.</p>
                       ) : (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {faltanUnidades.map(u => (
@@ -586,7 +588,7 @@ export default function AdminPage() {
             <div style={{ background: "#fff", borderRadius: 12, padding: "22px 24px", marginBottom: 20, border: "1px solid #e5e5e5" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
                 <h3 style={{ fontWeight: 700, color: "#111", fontSize: 15, margin: 0 }}>
-                  {editandoId ? "✏️ Editar encuesta" : "Nueva encuesta"}
+                  {editandoId ? "Editar encuesta" : "Nueva encuesta"}
                 </h3>
                 {editandoId && (
                   <button onClick={cancelarEdicion}
@@ -704,7 +706,7 @@ export default function AdminPage() {
               </div>
               <button onClick={exportarRegistrosXLSX} disabled={registrosFiltrados.length === 0}
                 style={{ background: registrosFiltrados.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: registrosFiltrados.length === 0 ? "not-allowed" : "pointer" }}>
-                ⬇ Exportar Excel
+                Exportar Excel
               </button>
             </div>
 
@@ -745,6 +747,7 @@ export default function AdminPage() {
                     <tr style={{ background: "#f9f9f9" }}>
                       {[
                         "#", "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
+                        ...(registrosTipo === "residentes" ? ["Arriendo"] : []),
                         "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección"] : []), "Ciudad",
                         "Fecha registro",
                         ...(verEliminados ? [""] : []),
@@ -764,7 +767,10 @@ export default function AdminPage() {
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.telefono || "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{calcularEdad(r.fecha_nacimiento)}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo_contacto || "—"}</td>
-                        <td style={{ padding: "8px 10px", color: r.es_contacto_principal ? NARANJA : "#111", fontWeight: r.es_contacto_principal ? 700 : 400 }}>{r.es_contacto_principal ? "★ Principal" : "—"}</td>
+                        <td style={{ padding: "8px 10px", color: r.es_contacto_principal ? NARANJA : "#111", fontWeight: r.es_contacto_principal ? 700 : 400 }}>{r.es_contacto_principal ? "Principal" : "—"}</td>
+                        {registrosTipo === "residentes" && (
+                          <td style={{ padding: "8px 10px", color: r.es_titular_arriendo ? NARANJA : "#111", fontWeight: r.es_titular_arriendo ? 700 : 400 }}>{r.es_titular_arriendo ? "Sí" : "—"}</td>
+                        )}
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
                         {registrosTipo === "propietarios" && (
                           <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
@@ -775,7 +781,7 @@ export default function AdminPage() {
                           <td style={{ padding: "8px 10px" }}>
                             <button onClick={() => restaurarRegistro(r.id)}
                               style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                              ↺ Restaurar
+                              Restaurar
                             </button>
                           </td>
                         )}
@@ -802,7 +808,7 @@ export default function AdminPage() {
               </div>
               <button onClick={exportarContactosXLSX} disabled={titulares.length === 0}
                 style={{ background: titulares.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: titulares.length === 0 ? "not-allowed" : "pointer" }}>
-                ⬇ Exportar Excel
+                Exportar Excel
               </button>
             </div>
 
@@ -818,13 +824,13 @@ export default function AdminPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {titulares.map((r, i) => (
                   <div key={r.id} style={{ border: `2px solid ${NARANJA}40`, background: "#fff8f0", borderRadius: 10, padding: "14px 16px" }}>
-                    <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: 0 }}>{i + 1}. ★ {r.nombres} {r.apellidos}</p>
+                    <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: 0 }}>{i + 1}. {r.nombres} {r.apellidos}</p>
                     {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>{formatUnidad(r.unidad)}</p>}
                     <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
                       {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años
                     </p>
                     <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                      📞 {r.telefono || "—"} · ✉️ {r.correo_contacto || "—"}
+                      {r.telefono || "—"} · {r.correo_contacto || "—"}
                     </p>
                     {(r.direccion || r.ciudad || r.numero_matricula) && (
                       <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
@@ -847,7 +853,7 @@ export default function AdminPage() {
               </h3>
               <button onClick={exportarParqueaderosXLSX} disabled={parqueaderosFiltrados.length === 0}
                 style={{ background: parqueaderosFiltrados.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: parqueaderosFiltrados.length === 0 ? "not-allowed" : "pointer" }}>
-                ⬇ Exportar Excel
+                Exportar Excel
               </button>
             </div>
 
@@ -895,7 +901,7 @@ export default function AdminPage() {
                         <td style={{ padding: "8px 10px", color: "#111" }}>{p.numero_parqueadero}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{p.nombres}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{p.apellidos}</td>
-                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.tipo_vehiculo === "Moto" ? "🏍️ Moto" : "🚗 Carro"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.tipo_vehiculo}</td>
                         <td style={{ padding: "8px 10px", color: "#111", fontWeight: 700 }}>{p.placa}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{p.marca}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{p.modelo}</td>
@@ -904,7 +910,7 @@ export default function AdminPage() {
                           <td style={{ padding: "8px 10px" }}>
                             <button onClick={() => restaurarParqueadero(p.id)}
                               style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                              ↺ Restaurar
+                              Restaurar
                             </button>
                           </td>
                         )}

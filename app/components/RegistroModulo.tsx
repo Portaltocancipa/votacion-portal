@@ -17,6 +17,7 @@ interface Registro {
   fecha_nacimiento: string;
   correo_contacto: string;
   es_contacto_principal: boolean;
+  es_titular_arriendo?: boolean;
   unidad: string;
   numero_matricula?: string;
   direccion?: string;
@@ -37,6 +38,7 @@ const FORM_INIT = {
   telefono: "", fecha_nacimiento: "", correo_contacto: "",
   numero_matricula: "", direccion: "", ciudad: "",
   es_contacto_principal: false,
+  es_titular_arriendo: false,
 };
 
 const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula", "ciudad"];
@@ -91,6 +93,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       fecha_nacimiento: r.fecha_nacimiento, correo_contacto: r.correo_contacto || "",
       numero_matricula: (r.numero_matricula || "").toUpperCase(), direccion: (r.direccion || "").toUpperCase(), ciudad: (r.ciudad || "").toUpperCase(),
       es_contacto_principal: !!r.es_contacto_principal,
+      es_titular_arriendo: !!r.es_titular_arriendo,
     });
     setEditandoId(r.id);
     setAceptaTratamiento(true);
@@ -157,7 +160,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
   return (
     <>
       <button onClick={onVolver} style={{ background: "none", border: "none", color: VERDE, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 16 }}>
-        ← Volver al menú
+        Volver al menú
       </button>
 
       <h2 style={{ fontSize: 18, fontWeight: 800, color: VERDE, marginBottom: 4 }}>{titulo}</h2>
@@ -182,7 +185,9 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
             <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>
-                  {r.nombres} {r.apellidos} {r.es_contacto_principal && <span style={{ color: NARANJA }}>★ Contacto principal</span>}
+                  {r.nombres} {r.apellidos}
+                  {r.es_contacto_principal && <span style={{ color: NARANJA }}> · Contacto principal</span>}
+                  {r.es_titular_arriendo && <span style={{ color: NARANJA }}> · Titular del Arriendo</span>}
                 </p>
                 <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
                   {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años{r.telefono ? ` · ${r.telefono}` : ""}
@@ -307,6 +312,13 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
             <input type="checkbox" checked={form.es_contacto_principal} onChange={e => setForm(f => ({ ...f, es_contacto_principal: e.target.checked }))}/>
             <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Es el titular para contacto</span>
           </label>
+
+          {!esPropietarios && necesitaCorreo && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 14 }}>
+              <input type="checkbox" checked={form.es_titular_arriendo} onChange={e => setForm(f => ({ ...f, es_titular_arriendo: e.target.checked }))}/>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Titular del Arriendo</span>
+            </label>
+          )}
 
           {!editandoId && (
             <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
