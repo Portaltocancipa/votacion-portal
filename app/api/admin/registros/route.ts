@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Parámetro 'tabla' inválido" }, { status: 400 });
   }
 
-  const data = await listarTodos(tabla);
+  const eliminados = req.nextUrl.searchParams.get("eliminados") === "true";
+  const data = await listarTodos(tabla, eliminados);
   return NextResponse.json(data);
 }

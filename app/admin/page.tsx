@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import * as XLSX from "xlsx";
 import { calcularEdad } from "@/lib/edad";
+import { formatUnidad } from "@/lib/unidad";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
@@ -19,6 +20,8 @@ interface RegistroAdmin {
   fecha_nacimiento: string;
   correo_contacto: string;
   es_contacto_principal: boolean;
+  unidad?: string;
+  eliminado?: boolean;
   numero_matricula?: string;
   direccion?: string;
   ciudad?: string;
@@ -58,6 +61,8 @@ export default function AdminPage() {
   const [registrosTipo, setRegistrosTipo] = useState<"residentes" | "propietarios">("residentes");
   const [registros, setRegistros] = useState<RegistroAdmin[]>([]);
   const [cargandoRegistros, setCargandoRegistros] = useState(false);
+  const [verEliminados, setVerEliminados] = useState(false);
+  const [filtroUnidad, setFiltroUnidad] = useState("");
 
   const [datos, setDatos] = useState<EncuestaResult[]>([]);
   const [encSeleccionada, setEncSeleccionada] = useState("");
@@ -100,9 +105,9 @@ export default function AdminPage() {
     setEncuestas(Array.isArray(data) ? data : []);
   };
 
-  const cargarRegistros = useCallback(async (tipo: "residentes" | "propietarios") => {
+  const cargarRegistros = useCallback(async (tipo: "residentes" | "propietarios", eliminados: boolean) => {
     setCargandoRegistros(true);
-    const res = await fetch(`/api/admin/registros?key=${ADMIN_KEY}&tabla=${tipo}`);
+    const res = await fetch(`/api/admin/registros?key=${ADMIN_KEY}&tabla=${tipo}&eliminados=${eliminados}`);
     const data = await res.json();
     setRegistros(Array.isArray(data) ? data : []);
     setCargandoRegistros(false);
@@ -113,8 +118,10 @@ export default function AdminPage() {
   }, [autenticado]);
 
   useEffect(() => {
-    if (autenticado && (tab === "registros" || tab === "contactos")) cargarRegistros(registrosTipo);
-  }, [autenticado, tab, registrosTipo, cargarRegistros]);
+    setFiltroUnidad("");
+    if (autenticado && tab === "registros") cargarRegistros(registrosTipo, verEliminados);
+    else if (autenticado && tab === "contactos") cargarRegistros(registrosTipo, false);
+  }, [autenticado, tab, registrosTipo, verEliminados, cargarRegistros]);
 
   useEffect(() => {
     if (encSeleccionada) cargarFaltan(encSeleccionada);
@@ -251,8 +258,13 @@ export default function AdminPage() {
     XLSX.writeFile(wb, `resultados_${encActual.pregunta.substring(0, 30).replace(/\s+/g, "_")}.xlsx`);
   };
 
+  const unidadesDisponibles = Array.from(new Set(registros.map(r => r.unidad).filter((u): u is string => !!u)))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const registrosFiltrados = filtroUnidad ? registros.filter(r => r.unidad === filtroUnidad) : registros;
+
   const exportarRegistrosXLSX = () => {
-    const filas = registros.map(r => ({
+    const filas = registrosFiltrados.map(r => ({
+      Unidad: r.unidad ? formatUnidad(r.unidad) : "",
       Nombres: r.nombres,
       Apellidos: r.apellidos,
       "Tipo Documento": r.tipo_documento,
@@ -272,7 +284,7 @@ export default function AdminPage() {
     const ws = XLSX.utils.json_to_sheet(filas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, registrosTipo);
-    XLSX.writeFile(wb, `${registrosTipo}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `${registrosTipo}_${verEliminados ? "eliminados_" : ""}${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   if (!autenticado) return (
@@ -588,7 +600,7 @@ export default function AdminPage() {
 
         {tab === "registros" && (
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {([["residentes", "Residentes"], ["propietarios", "Propietarios"]] as const).map(([t, label]) => (
                   <button key={t} onClick={() => setRegistrosTipo(t)}
@@ -598,27 +610,49 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
-              <button onClick={exportarRegistrosXLSX} disabled={registros.length === 0}
-                style={{ background: registros.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: registros.length === 0 ? "not-allowed" : "pointer" }}>
+              <button onClick={exportarRegistrosXLSX} disabled={registrosFiltrados.length === 0}
+                style={{ background: registrosFiltrados.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: registrosFiltrados.length === 0 ? "not-allowed" : "pointer" }}>
                 ⬇ Exportar Excel
               </button>
             </div>
 
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([[false, "Activos"], [true, "Histórico (eliminados)"]] as const).map(([v, label]) => (
+                  <button key={String(v)} onClick={() => setVerEliminados(v)}
+                    style={{ padding: "6px 14px", borderRadius: 20, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer",
+                      background: verEliminados === v ? NARANJA : "#f0f0f0", color: verEliminados === v ? "#fff" : "#555" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Unidad:</label>
+                <select value={filtroUnidad} onChange={e => setFiltroUnidad(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: "2px solid #ddd", fontSize: 12, color: "#111" }}>
+                  <option value="">Todas</option>
+                  {unidadesDisponibles.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
+                </select>
+              </div>
+            </div>
+
             <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 16, fontSize: 15 }}>
-              {registrosTipo === "residentes" ? "Residentes registrados" : "Propietarios registrados"} ({registros.length})
+              {registrosTipo === "residentes" ? "Residentes" : "Propietarios"} {verEliminados ? "eliminados" : "registrados"} ({registrosFiltrados.length})
             </h3>
 
             {cargandoRegistros ? (
               <p style={{ color: "#111", fontSize: 13 }}>Cargando...</p>
-            ) : registros.length === 0 ? (
-              <p style={{ color: "#111", fontSize: 13 }}>Aún no hay registros en este módulo.</p>
+            ) : registrosFiltrados.length === 0 ? (
+              <p style={{ color: "#111", fontSize: 13 }}>
+                {verEliminados ? "No hay registros eliminados." : "Aún no hay registros en este módulo."}
+              </p>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "#f9f9f9" }}>
                       {[
-                        "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
+                        "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
                         ...(registrosTipo === "propietarios" ? ["Matrícula", "Dirección", "Ciudad"] : []),
                         "Fecha registro",
                       ].map(h => (
@@ -627,8 +661,9 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {registros.map(r => (
+                    {registrosFiltrados.map(r => (
                       <tr key={r.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.unidad ? formatUnidad(r.unidad) : "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.nombres}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.apellidos}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.tipo_documento} {r.numero_documento}</td>
@@ -682,7 +717,8 @@ export default function AdminPage() {
                     {titulares.map(r => (
                       <div key={r.id} style={{ border: `2px solid ${NARANJA}40`, background: "#fff8f0", borderRadius: 10, padding: "14px 16px" }}>
                         <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: 0 }}>★ {r.nombres} {r.apellidos}</p>
-                        <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
+                        {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>{formatUnidad(r.unidad)}</p>}
+                        <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
                           {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años
                         </p>
                         <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>

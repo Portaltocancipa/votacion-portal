@@ -15,10 +15,12 @@ export interface RegistroInput {
   ciudad?: string;
   correo_contacto?: string;
   es_contacto_principal?: boolean;
+  unidad?: string;
 }
 
 export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInput>): string | null {
   if (!body.correo) return "Falta el correo";
+  if (!body.unidad) return "Selecciona la unidad";
   if (!body.tipo_documento) return "Selecciona el tipo de documento";
   if (!body.numero_documento) return "Falta el número de documento";
   if (!body.nombres) return "Faltan los nombres";
@@ -40,6 +42,7 @@ export async function listarPorCorreo(tabla: TablaRegistro, correo: string) {
     .from(tabla)
     .select("*")
     .eq("correo", correo.toLowerCase())
+    .eq("eliminado", false)
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -83,11 +86,25 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
   return data;
 }
 
-export async function listarTodos(tabla: TablaRegistro) {
+export async function borrarRegistro(tabla: TablaRegistro, id: string, correo: string) {
+  const supabase = getSupabase();
+  const { data: existente, error: errBusqueda } = await supabase.from(tabla).select("correo").eq("id", id).maybeSingle();
+  if (errBusqueda) throw new Error(errBusqueda.message);
+  if (!existente) throw new Error("Registro no encontrado");
+  if (existente.correo.toLowerCase() !== correo.toLowerCase()) throw new Error("No autorizado para borrar este registro");
+
+  // Borrado suave: nunca se elimina de la base, solo se oculta. El admin
+  // conserva el histórico completo en el reporte de "Eliminados".
+  const { error } = await supabase.from(tabla).update({ eliminado: true }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function listarTodos(tabla: TablaRegistro, eliminados = false) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from(tabla)
     .select("*")
+    .eq("eliminado", eliminados)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];

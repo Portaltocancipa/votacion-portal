@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { calcularEdad, TIPOS_DOCUMENTO } from "@/lib/edad";
+import { formatUnidad } from "@/lib/unidad";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
@@ -16,6 +17,7 @@ interface Registro {
   fecha_nacimiento: string;
   correo_contacto: string;
   es_contacto_principal: boolean;
+  unidad: string;
   numero_matricula?: string;
   direccion?: string;
   ciudad?: string;
@@ -25,23 +27,24 @@ interface Props {
   tipo: "residentes" | "propietarios";
   titulo: string;
   correo: string;
+  unidades: string[];
   onVolver: () => void;
 }
 
 const FORM_INIT = {
-  tipo_documento: "", numero_documento: "", nombres: "", apellidos: "",
+  unidad: "", tipo_documento: "", numero_documento: "", nombres: "", apellidos: "",
   telefono: "", fecha_nacimiento: "", correo_contacto: "",
   numero_matricula: "", direccion: "", ciudad: "",
   es_contacto_principal: false,
 };
 
-const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "correo_contacto"];
+const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "correo_contacto"];
 const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["numero_matricula", "direccion", "ciudad"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
 
-export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props) {
+export default function RegistroModulo({ tipo, titulo, correo, unidades, onVolver }: Props) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [cargando, setCargando] = useState(true);
   const [verTodos, setVerTodos] = useState(false);
@@ -50,6 +53,7 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
   const [form, setForm] = useState(FORM_INIT);
   const [aceptaTratamiento, setAceptaTratamiento] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [borrandoId, setBorrandoId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [errorCarga, setErrorCarga] = useState("");
 
@@ -77,6 +81,7 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
 
   const iniciarEdicion = (r: Registro) => {
     setForm({
+      unidad: r.unidad || "",
       tipo_documento: r.tipo_documento, numero_documento: r.numero_documento.toUpperCase(),
       nombres: r.nombres.toUpperCase(), apellidos: r.apellidos.toUpperCase(), telefono: r.telefono || "",
       fecha_nacimiento: r.fecha_nacimiento, correo_contacto: r.correo_contacto || "",
@@ -87,6 +92,18 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
     setAceptaTratamiento(true);
     setError("");
     setMostrarForm(true);
+  };
+
+  const borrar = async (id: string) => {
+    if (!confirm("¿Quitar este registro de tu lista? No se elimina de la base de datos, la administración conserva el histórico.")) return;
+    setBorrandoId(id);
+    await fetch(`/api/${tipo}/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ correo }),
+    });
+    setBorrandoId(null);
+    cargar();
   };
 
   const guardar = async () => {
@@ -147,6 +164,7 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
                 <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
                   {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años{r.telefono ? ` · ${r.telefono}` : ""}
                 </p>
+                {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{formatUnidad(r.unidad)}</p>}
                 {r.correo_contacto && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{r.correo_contacto}</p>}
                 {esPropietarios && (r.direccion || r.ciudad || r.numero_matricula) && (
                   <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
@@ -154,10 +172,16 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
                   </p>
                 )}
               </div>
-              <button onClick={() => iniciarEdicion(r)}
-                style={{ background: "#f0f4ff", color: "#3b5bdb", border: "1px solid #748ffc", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                Editar
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                <button onClick={() => iniciarEdicion(r)}
+                  style={{ background: "#f0f4ff", color: "#3b5bdb", border: "1px solid #748ffc", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  Editar
+                </button>
+                <button onClick={() => borrar(r.id)} disabled={borrandoId === r.id}
+                  style={{ background: "#fff5f5", color: "#ef4444", border: "1px solid #fca5a5", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: borrandoId === r.id ? "not-allowed" : "pointer" }}>
+                  {borrandoId === r.id ? "..." : "Borrar"}
+                </button>
+              </div>
             </div>
           ))}
           {registros.length > 3 && (
@@ -179,6 +203,14 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
             <h3 style={{ fontSize: 14, fontWeight: 800, color: VERDE, margin: 0 }}>
               {editandoId ? `Editar ${sustantivo}` : `Nuevo ${sustantivo}`}
             </h3>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Unidad</label>
+            <select value={form.unidad} onChange={e => setForm(f => ({ ...f, unidad: e.target.value }))} style={inputStyle}>
+              <option value="">Selecciona...</option>
+              {unidades.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
+            </select>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
