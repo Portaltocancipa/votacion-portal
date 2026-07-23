@@ -14,6 +14,11 @@ interface Registro {
   apellidos: string;
   telefono: string;
   fecha_nacimiento: string;
+  correo_contacto: string;
+  es_contacto_principal: boolean;
+  numero_matricula?: string;
+  direccion?: string;
+  ciudad?: string;
 }
 
 interface Props {
@@ -23,7 +28,14 @@ interface Props {
   onVolver: () => void;
 }
 
-const FORM_INIT = { tipo_documento: "", numero_documento: "", nombres: "", apellidos: "", telefono: "", fecha_nacimiento: "" };
+const FORM_INIT = {
+  tipo_documento: "", numero_documento: "", nombres: "", apellidos: "",
+  telefono: "", fecha_nacimiento: "", correo_contacto: "",
+  numero_matricula: "", direccion: "", ciudad: "",
+  es_contacto_principal: false,
+};
+
+const CAMPOS_REQUERIDOS: (keyof typeof FORM_INIT)[] = ["tipo_documento", "numero_documento", "nombres", "apellidos", "fecha_nacimiento"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
@@ -33,11 +45,15 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
   const [cargando, setCargando] = useState(true);
   const [verTodos, setVerTodos] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_INIT);
   const [aceptaTratamiento, setAceptaTratamiento] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [errorCarga, setErrorCarga] = useState("");
+
+  const esPropietarios = tipo === "propietarios";
+  const sustantivo = esPropietarios ? "propietario" : "residente";
 
   const cargar = useCallback(async () => {
     setCargando(true); setErrorCarga("");
@@ -54,22 +70,39 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  const cancelarForm = () => {
+    setMostrarForm(false); setEditandoId(null); setForm(FORM_INIT); setAceptaTratamiento(false); setError("");
+  };
+
+  const iniciarEdicion = (r: Registro) => {
+    setForm({
+      tipo_documento: r.tipo_documento, numero_documento: r.numero_documento,
+      nombres: r.nombres, apellidos: r.apellidos, telefono: r.telefono || "",
+      fecha_nacimiento: r.fecha_nacimiento, correo_contacto: r.correo_contacto || "",
+      numero_matricula: r.numero_matricula || "", direccion: r.direccion || "", ciudad: r.ciudad || "",
+      es_contacto_principal: !!r.es_contacto_principal,
+    });
+    setEditandoId(r.id);
+    setAceptaTratamiento(true);
+    setError("");
+    setMostrarForm(true);
+  };
+
   const guardar = async () => {
-    if (!aceptaTratamiento) { setError("Debes aceptar el tratamiento de datos personales para continuar"); return; }
-    const faltante = Object.entries(form).find(([k, v]) => k !== "telefono" && !v);
+    if (!editandoId && !aceptaTratamiento) { setError("Debes aceptar el tratamiento de datos personales para continuar"); return; }
+    const faltante = CAMPOS_REQUERIDOS.find(k => !form[k]);
     if (faltante) { setError("Completa todos los campos obligatorios"); return; }
 
     setGuardando(true); setError("");
-    const res = await fetch(`/api/${tipo}`, {
-      method: "POST",
+    const url = editandoId ? `/api/${tipo}/${editandoId}` : `/api/${tipo}`;
+    const res = await fetch(url, {
+      method: editandoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, correo }),
     });
     const data = await res.json();
     if (data.id) {
-      setForm(FORM_INIT);
-      setAceptaTratamiento(false);
-      setMostrarForm(false);
+      cancelarForm();
       cargar();
     } else {
       setError(data.error || "Error al guardar");
@@ -78,7 +111,6 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
   };
 
   const visibles = verTodos ? registros : registros.slice(0, 3);
-  const sustantivo = tipo === "residentes" ? "residente" : "propietario";
 
   return (
     <>
@@ -105,11 +137,25 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
           {visibles.map(r => (
-            <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px" }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>{r.nombres} {r.apellidos}</p>
-              <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
-                {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años{r.telefono ? ` · ${r.telefono}` : ""}
-              </p>
+            <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>
+                  {r.nombres} {r.apellidos} {r.es_contacto_principal && <span style={{ color: NARANJA }}>★ Contacto principal</span>}
+                </p>
+                <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
+                  {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años{r.telefono ? ` · ${r.telefono}` : ""}
+                </p>
+                {r.correo_contacto && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{r.correo_contacto}</p>}
+                {esPropietarios && (r.direccion || r.ciudad || r.numero_matricula) && (
+                  <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
+                    {[r.direccion, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => iniciarEdicion(r)}
+                style={{ background: "#f0f4ff", color: "#3b5bdb", border: "1px solid #748ffc", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                Editar
+              </button>
             </div>
           ))}
           {registros.length > 3 && (
@@ -127,6 +173,12 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
         </button>
       ) : (
         <div style={{ border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 800, color: VERDE, margin: 0 }}>
+              {editandoId ? `Editar ${sustantivo}` : `Nuevo ${sustantivo}`}
+            </h3>
+          </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
               <label style={labelStyle}>Tipo de documento</label>
@@ -166,30 +218,61 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
             </div>
           </div>
 
-          <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-            <p style={{ fontSize: 11, color: "#555", lineHeight: 1.6, margin: "0 0 10px" }}>
-              Al registrar esta información usted autoriza a la Agrupación El Portal de Tocancipá para el tratamiento
-              de los datos personales aquí suministrados, conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013,
-              con la finalidad exclusiva de actualizar la base de datos de copropietarios y residentes de la
-              copropiedad. Estos datos no serán compartidos con terceros distintos a la administración, salvo
-              requerimiento de autoridad competente.
-            </p>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input type="checkbox" checked={aceptaTratamiento} onChange={e => setAceptaTratamiento(e.target.checked)}/>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Acepto el tratamiento de mis datos personales</span>
-            </label>
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Correo electrónico</label>
+            <input type="email" value={form.correo_contacto} onChange={e => setForm(f => ({ ...f, correo_contacto: e.target.value }))} style={inputStyle} placeholder="correo@ejemplo.com"/>
           </div>
+
+          {esPropietarios && (
+            <>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Número de matrícula inmobiliaria</label>
+                <input value={form.numero_matricula} onChange={e => setForm(f => ({ ...f, numero_matricula: e.target.value }))} style={inputStyle}/>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={labelStyle}>Dirección</label>
+                  <input value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={labelStyle}>Ciudad</label>
+                  <input value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))} style={inputStyle} placeholder="Tocancipá"/>
+                </div>
+              </div>
+            </>
+          )}
+
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 14 }}>
+            <input type="checkbox" checked={form.es_contacto_principal} onChange={e => setForm(f => ({ ...f, es_contacto_principal: e.target.checked }))}/>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Es el titular para contacto</span>
+          </label>
+
+          {!editandoId && (
+            <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+              <p style={{ fontSize: 11, color: "#555", lineHeight: 1.6, margin: "0 0 10px" }}>
+                Al registrar esta información usted autoriza a la Agrupación El Portal de Tocancipá para el tratamiento
+                de los datos personales aquí suministrados, conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013,
+                con la finalidad exclusiva de actualizar la base de datos de copropietarios y residentes de la
+                copropiedad. Estos datos no serán compartidos con terceros distintos a la administración, salvo
+                requerimiento de autoridad competente.
+              </p>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input type="checkbox" checked={aceptaTratamiento} onChange={e => setAceptaTratamiento(e.target.checked)}/>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Acepto el tratamiento de mis datos personales</span>
+              </label>
+            </div>
+          )}
 
           {error && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => { setMostrarForm(false); setForm(FORM_INIT); setAceptaTratamiento(false); setError(""); }}
+            <button onClick={cancelarForm}
               style={{ flex: 1, background: "#fff", color: "#555", border: "2px solid #ddd", borderRadius: 10, padding: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
               Cancelar
             </button>
             <button onClick={guardar} disabled={guardando}
               style={{ flex: 1, background: guardando ? "#9e9e9e" : NARANJA, color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 13, fontWeight: 800, cursor: guardando ? "not-allowed" : "pointer" }}>
-              {guardando ? "Guardando..." : "Guardar"}
+              {guardando ? "Guardando..." : editandoId ? "Guardar cambios" : "Guardar"}
             </button>
           </div>
         </div>

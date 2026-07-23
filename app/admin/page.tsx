@@ -17,6 +17,11 @@ interface RegistroAdmin {
   apellidos: string;
   telefono: string;
   fecha_nacimiento: string;
+  correo_contacto: string;
+  es_contacto_principal: boolean;
+  numero_matricula?: string;
+  direccion?: string;
+  ciudad?: string;
   created_at: string;
 }
 
@@ -254,7 +259,14 @@ export default function AdminPage() {
       "N° Documento": r.numero_documento,
       Teléfono: r.telefono || "",
       Edad: calcularEdad(r.fecha_nacimiento),
-      Correo: r.correo,
+      "Correo contacto": r.correo_contacto || "",
+      "Contacto principal": r.es_contacto_principal ? "Sí" : "No",
+      ...(registrosTipo === "propietarios" ? {
+        "N° Matrícula": r.numero_matricula || "",
+        Dirección: r.direccion || "",
+        Ciudad: r.ciudad || "",
+      } : {}),
+      "Correo cuenta": r.correo,
       "Fecha registro": new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
     }));
     const ws = XLSX.utils.json_to_sheet(filas);
@@ -605,7 +617,11 @@ export default function AdminPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "#f9f9f9" }}>
-                      {["Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo", "Fecha registro"].map(h => (
+                      {[
+                        "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
+                        ...(registrosTipo === "propietarios" ? ["Matrícula", "Dirección", "Ciudad"] : []),
+                        "Fecha registro",
+                      ].map(h => (
                         <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
                       ))}
                     </tr>
@@ -618,7 +634,15 @@ export default function AdminPage() {
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.tipo_documento} {r.numero_documento}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.telefono || "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{calcularEdad(r.fecha_nacimiento)}</td>
-                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo_contacto || "—"}</td>
+                        <td style={{ padding: "8px 10px", color: r.es_contacto_principal ? NARANJA : "#111", fontWeight: r.es_contacto_principal ? 700 : 400 }}>{r.es_contacto_principal ? "★ Principal" : "—"}</td>
+                        {registrosTipo === "propietarios" && (
+                          <>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
+                          </>
+                        )}
                         <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
                       </tr>
                     ))}
