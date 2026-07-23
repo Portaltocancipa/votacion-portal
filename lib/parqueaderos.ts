@@ -1,5 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 
+export const MAX_PARQUEADEROS_POR_CUENTA = 4;
+
 export interface ParqueaderoInput {
   correo: string;
   unidad: string;
@@ -39,6 +41,17 @@ export async function listarParqueaderosPorCorreo(correo: string) {
 
 export async function crearParqueadero(input: ParqueaderoInput) {
   const supabase = getSupabase();
+
+  const { count, error: errConteo } = await supabase
+    .from("parqueaderos")
+    .select("id", { count: "exact", head: true })
+    .eq("correo", input.correo.toLowerCase())
+    .eq("eliminado", false);
+  if (errConteo) throw new Error(errConteo.message);
+  if ((count ?? 0) >= MAX_PARQUEADEROS_POR_CUENTA) {
+    throw new Error(`Ya alcanzaste el máximo de ${MAX_PARQUEADEROS_POR_CUENTA} vehículos registrados.`);
+  }
+
   const { data, error } = await supabase
     .from("parqueaderos")
     .insert({ ...input, correo: input.correo.toLowerCase() })

@@ -821,25 +821,39 @@ export default function AdminPage() {
             ) : titulares.length === 0 ? (
               <p style={{ color: "#111", fontSize: 13 }}>Aún no hay titular de comunicaciones seleccionado para {registrosTipo}.</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {titulares.map((r, i) => (
-                  <div key={r.id} style={{ border: `2px solid ${NARANJA}40`, background: "#fff8f0", borderRadius: 10, padding: "14px 16px" }}>
-                    <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: 0 }}>{i + 1}. {r.nombres} {r.apellidos}</p>
-                    {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>{formatUnidad(r.unidad)}</p>}
-                    <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                      {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años
-                    </p>
-                    <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                      {r.telefono || "—"} · {r.correo_contacto || "—"}
-                    </p>
-                    {(r.direccion || r.ciudad || r.numero_matricula) && (
-                      <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                        {[registrosTipo === "propietarios" ? r.direccion : null, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                    <p style={{ fontSize: 11, color: "#999", margin: "4px 0 0" }}>Cuenta: {r.correo}</p>
-                  </div>
-                ))}
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f9f9f9" }}>
+                      {[
+                        "#", "Unidad", "Nombres", "Apellidos", "Documento", "Edad", "Teléfono", "Correo contacto",
+                        "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección"] : []), "Ciudad", "Correo cuenta",
+                      ].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {titulares.map((r, i) => (
+                      <tr key={r.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.unidad ? formatUnidad(r.unidad) : "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111", fontWeight: 700 }}>{r.nombres}</td>
+                        <td style={{ padding: "8px 10px", color: "#111", fontWeight: 700 }}>{r.apellidos}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.tipo_documento} {r.numero_documento}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{calcularEdad(r.fecha_nacimiento)}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.telefono || "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo_contacto || "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
+                        {registrosTipo === "propietarios" && (
+                          <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
+                        )}
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

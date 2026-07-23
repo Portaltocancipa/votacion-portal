@@ -26,6 +26,7 @@ interface Props {
 }
 
 const TIPOS_VEHICULO = ["Carro", "Moto"];
+const MAX_PARQUEADEROS = 4;
 
 const FORM_INIT = {
   unidad: "", numero_parqueadero: "", nombres: "", apellidos: "",
@@ -193,10 +194,16 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
       )}
 
       {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)}
-          style={{ width: "100%", background: VERDE, color: "#fff", border: "none", borderRadius: 10, padding: 13, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
-          + Registrar un vehículo
-        </button>
+        registros.length >= MAX_PARQUEADEROS ? (
+          <p style={{ fontSize: 13, color: "#555", textAlign: "center" }}>
+            Ya alcanzaste el máximo de {MAX_PARQUEADEROS} vehículos registrados.
+          </p>
+        ) : (
+          <button onClick={() => setMostrarForm(true)}
+            style={{ width: "100%", background: VERDE, color: "#fff", border: "none", borderRadius: 10, padding: 13, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+            + Registrar un vehículo
+          </button>
+        )
       ) : (
         <div style={{ border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: 18 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
