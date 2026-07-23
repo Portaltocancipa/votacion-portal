@@ -18,6 +18,8 @@ alter table residentes add column if not exists correo_contacto text;
 alter table residentes add column if not exists es_contacto_principal boolean not null default false;
 alter table residentes add column if not exists unidad text;
 alter table residentes add column if not exists eliminado boolean not null default false;
+alter table residentes add column if not exists numero_matricula text;
+alter table residentes add column if not exists ciudad text;
 
 create table if not exists propietarios (
   id uuid primary key default gen_random_uuid(),
@@ -37,10 +39,11 @@ alter table propietarios add column if not exists es_contacto_principal boolean 
 alter table propietarios add column if not exists unidad text;
 alter table propietarios add column if not exists eliminado boolean not null default false;
 
--- Campos exclusivos de Propietarios (identificación del inmueble)
 alter table propietarios add column if not exists numero_matricula text;
-alter table propietarios add column if not exists direccion text;
 alter table propietarios add column if not exists ciudad text;
+
+-- Campo exclusivo de Propietarios (Residentes no lo tiene)
+alter table propietarios add column if not exists direccion text;
 
 -- Sin políticas para anon/authenticated: solo se accede vía los endpoints
 -- de Next.js que usan SUPABASE_SERVICE_ROLE_KEY (igual que encuestas/respuestas_encuesta).
@@ -51,7 +54,9 @@ alter table propietarios add column if not exists ciudad text;
 update residentes set
   nombres = upper(nombres),
   apellidos = upper(apellidos),
-  numero_documento = upper(numero_documento);
+  numero_documento = upper(numero_documento),
+  numero_matricula = upper(numero_matricula),
+  ciudad = upper(ciudad);
 
 update propietarios set
   nombres = upper(nombres),

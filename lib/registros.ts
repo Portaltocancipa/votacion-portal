@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
 
 export type TablaRegistro = "residentes" | "propietarios";
 
@@ -27,12 +28,12 @@ export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInpu
   if (!body.apellidos) return "Faltan los apellidos";
   if (!body.telefono) return "Falta el teléfono";
   if (!body.fecha_nacimiento) return "Falta la fecha de nacimiento";
-  if (!body.correo_contacto) return "Falta el correo electrónico";
-  if (tabla === "propietarios") {
-    if (!body.numero_matricula) return "Falta el número de matrícula inmobiliaria";
-    if (!body.direccion) return "Falta la dirección";
-    if (!body.ciudad) return "Falta la ciudad";
+  if (!TIPOS_DOCUMENTO_SIN_CORREO.includes(body.tipo_documento) && !body.correo_contacto) {
+    return "Falta el correo electrónico";
   }
+  if (!body.numero_matricula) return "Falta el número de matrícula inmobiliaria";
+  if (!body.ciudad) return "Falta la ciudad";
+  if (tabla === "propietarios" && !body.direccion) return "Falta la dirección";
   return null;
 }
 

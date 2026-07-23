@@ -28,6 +28,21 @@ interface RegistroAdmin {
   created_at: string;
 }
 
+interface ParqueaderoAdmin {
+  id: string;
+  correo: string;
+  unidad: string;
+  numero_parqueadero: string;
+  nombres: string;
+  apellidos: string;
+  placa: string;
+  marca: string;
+  modelo: string;
+  tipo_vehiculo: string;
+  eliminado?: boolean;
+  created_at: string;
+}
+
 interface EncuestaResult {
   id: string;
   pregunta: string;
@@ -56,13 +71,18 @@ export default function AdminPage() {
   const [key, setKey] = useState("");
   const [autenticado, setAutenticado] = useState(false);
   const [errorAuth, setErrorAuth] = useState("");
-  const [tab, setTab] = useState<"resultados" | "encuestas" | "registros" | "contactos">("resultados");
+  const [tab, setTab] = useState<"resultados" | "encuestas" | "registros" | "contactos" | "parqueaderos">("resultados");
 
   const [registrosTipo, setRegistrosTipo] = useState<"residentes" | "propietarios">("residentes");
   const [registros, setRegistros] = useState<RegistroAdmin[]>([]);
   const [cargandoRegistros, setCargandoRegistros] = useState(false);
   const [verEliminados, setVerEliminados] = useState(false);
   const [filtroUnidad, setFiltroUnidad] = useState("");
+
+  const [parqueaderos, setParqueaderos] = useState<ParqueaderoAdmin[]>([]);
+  const [cargandoParqueaderos, setCargandoParqueaderos] = useState(false);
+  const [verEliminadosParqueadero, setVerEliminadosParqueadero] = useState(false);
+  const [filtroUnidadParqueadero, setFiltroUnidadParqueadero] = useState("");
 
   const [datos, setDatos] = useState<EncuestaResult[]>([]);
   const [encSeleccionada, setEncSeleccionada] = useState("");
@@ -122,6 +142,19 @@ export default function AdminPage() {
     cargarRegistros(registrosTipo, verEliminados);
   };
 
+  const cargarParqueaderos = useCallback(async (eliminados: boolean) => {
+    setCargandoParqueaderos(true);
+    const res = await fetch(`/api/admin/parqueaderos?key=${ADMIN_KEY}&eliminados=${eliminados}`);
+    const data = await res.json();
+    setParqueaderos(Array.isArray(data) ? data : []);
+    setCargandoParqueaderos(false);
+  }, []);
+
+  const restaurarParqueadero = async (id: string) => {
+    await fetch(`/api/admin/parqueaderos/${id}?key=${ADMIN_KEY}`, { method: "PUT" });
+    cargarParqueaderos(verEliminadosParqueadero);
+  };
+
   useEffect(() => {
     if (autenticado) { cargarResultados(); cargarEncuestas(); }
   }, [autenticado]);
@@ -131,6 +164,11 @@ export default function AdminPage() {
     if (autenticado && tab === "registros") cargarRegistros(registrosTipo, verEliminados);
     else if (autenticado && tab === "contactos") cargarRegistros(registrosTipo, false);
   }, [autenticado, tab, registrosTipo, verEliminados, cargarRegistros]);
+
+  useEffect(() => {
+    setFiltroUnidadParqueadero("");
+    if (autenticado && tab === "parqueaderos") cargarParqueaderos(verEliminadosParqueadero);
+  }, [autenticado, tab, verEliminadosParqueadero, cargarParqueaderos]);
 
   useEffect(() => {
     if (encSeleccionada) cargarFaltan(encSeleccionada);
@@ -272,6 +310,30 @@ export default function AdminPage() {
   const registrosFiltrados = filtroUnidad ? registros.filter(r => r.unidad === filtroUnidad) : registros;
   const titulares = registros.filter(r => r.es_contacto_principal);
 
+  const unidadesDisponiblesParqueadero = Array.from(new Set(parqueaderos.map(p => p.unidad).filter((u): u is string => !!u)))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const parqueaderosFiltrados = filtroUnidadParqueadero ? parqueaderos.filter(p => p.unidad === filtroUnidadParqueadero) : parqueaderos;
+
+  const exportarParqueaderosXLSX = () => {
+    const filas = parqueaderosFiltrados.map((p, i) => ({
+      "#": i + 1,
+      Unidad: p.unidad ? formatUnidad(p.unidad) : "",
+      "N° Parqueadero": p.numero_parqueadero,
+      Nombres: p.nombres,
+      Apellidos: p.apellidos,
+      Tipo: p.tipo_vehiculo,
+      Placa: p.placa,
+      Marca: p.marca,
+      Modelo: p.modelo,
+      "Correo cuenta": p.correo,
+      "Fecha registro": new Date(p.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
+    }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Parqueaderos");
+    XLSX.writeFile(wb, `parqueaderos_${verEliminadosParqueadero ? "eliminados_" : ""}${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const exportarContactosXLSX = () => {
     const filas = titulares.map((r, i) => ({
       "#": i + 1,
@@ -282,11 +344,9 @@ export default function AdminPage() {
       "N° Documento": r.numero_documento,
       Teléfono: r.telefono || "",
       "Correo contacto": r.correo_contacto || "",
-      ...(registrosTipo === "propietarios" ? {
-        "N° Matrícula": r.numero_matricula || "",
-        Dirección: r.direccion || "",
-        Ciudad: r.ciudad || "",
-      } : {}),
+      "N° Matrícula": r.numero_matricula || "",
+      ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "" } : {}),
+      Ciudad: r.ciudad || "",
       "Correo cuenta": r.correo,
     }));
     const ws = XLSX.utils.json_to_sheet(filas);
@@ -307,11 +367,9 @@ export default function AdminPage() {
       Edad: calcularEdad(r.fecha_nacimiento),
       "Correo contacto": r.correo_contacto || "",
       "Contacto principal": r.es_contacto_principal ? "Sí" : "No",
-      ...(registrosTipo === "propietarios" ? {
-        "N° Matrícula": r.numero_matricula || "",
-        Dirección: r.direccion || "",
-        Ciudad: r.ciudad || "",
-      } : {}),
+      "N° Matrícula": r.numero_matricula || "",
+      ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "" } : {}),
+      Ciudad: r.ciudad || "",
       "Correo cuenta": r.correo,
       "Fecha registro": new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
     }));
@@ -357,7 +415,7 @@ export default function AdminPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"], ["registros", "🏠 Registros"], ["contactos", "📞 Contactos"]] as const).map(([t, label]) => (
+          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"], ["registros", "🏠 Registros"], ["contactos", "📞 Contactos"], ["parqueaderos", "🚗 Parqueaderos"]] as const).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
                 background: tab === t ? VERDE : "#fff", color: tab === t ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
@@ -687,7 +745,7 @@ export default function AdminPage() {
                     <tr style={{ background: "#f9f9f9" }}>
                       {[
                         "#", "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
-                        ...(registrosTipo === "propietarios" ? ["Matrícula", "Dirección", "Ciudad"] : []),
+                        "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección"] : []), "Ciudad",
                         "Fecha registro",
                         ...(verEliminados ? [""] : []),
                       ].map(h => (
@@ -707,13 +765,11 @@ export default function AdminPage() {
                         <td style={{ padding: "8px 10px", color: "#111" }}>{calcularEdad(r.fecha_nacimiento)}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo_contacto || "—"}</td>
                         <td style={{ padding: "8px 10px", color: r.es_contacto_principal ? NARANJA : "#111", fontWeight: r.es_contacto_principal ? 700 : 400 }}>{r.es_contacto_principal ? "★ Principal" : "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
                         {registrosTipo === "propietarios" && (
-                          <>
-                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
-                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
-                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
-                          </>
+                          <td style={{ padding: "8px 10px", color: "#111" }}>{r.direccion || "—"}</td>
                         )}
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.ciudad || "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
                         {verEliminados && (
                           <td style={{ padding: "8px 10px" }}>
@@ -770,14 +826,92 @@ export default function AdminPage() {
                     <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
                       📞 {r.telefono || "—"} · ✉️ {r.correo_contacto || "—"}
                     </p>
-                    {registrosTipo === "propietarios" && (r.direccion || r.ciudad || r.numero_matricula) && (
+                    {(r.direccion || r.ciudad || r.numero_matricula) && (
                       <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                        {[r.direccion, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
+                        {[registrosTipo === "propietarios" ? r.direccion : null, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
                       </p>
                     )}
                     <p style={{ fontSize: 11, color: "#999", margin: "4px 0 0" }}>Cuenta: {r.correo}</p>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "parqueaderos" && (
+          <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+              <h3 style={{ fontWeight: 700, color: "#111", margin: 0, fontSize: 15 }}>
+                Vehículos {verEliminadosParqueadero ? "eliminados" : "registrados"} ({parqueaderosFiltrados.length})
+              </h3>
+              <button onClick={exportarParqueaderosXLSX} disabled={parqueaderosFiltrados.length === 0}
+                style={{ background: parqueaderosFiltrados.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: parqueaderosFiltrados.length === 0 ? "not-allowed" : "pointer" }}>
+                ⬇ Exportar Excel
+              </button>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([[false, "Activos"], [true, "Histórico (eliminados)"]] as const).map(([v, label]) => (
+                  <button key={String(v)} onClick={() => setVerEliminadosParqueadero(v)}
+                    style={{ padding: "6px 14px", borderRadius: 20, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer",
+                      background: verEliminadosParqueadero === v ? NARANJA : "#f0f0f0", color: verEliminadosParqueadero === v ? "#fff" : "#555" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Unidad:</label>
+                <select value={filtroUnidadParqueadero} onChange={e => setFiltroUnidadParqueadero(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: "2px solid #ddd", fontSize: 12, color: "#111" }}>
+                  <option value="">Todas</option>
+                  {unidadesDisponiblesParqueadero.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {cargandoParqueaderos ? (
+              <p style={{ color: "#111", fontSize: 13 }}>Cargando...</p>
+            ) : parqueaderosFiltrados.length === 0 ? (
+              <p style={{ color: "#111", fontSize: 13 }}>
+                {verEliminadosParqueadero ? "No hay registros eliminados." : "Aún no hay vehículos registrados."}
+              </p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f9f9f9" }}>
+                      {["#", "Unidad", "N° Parqueadero", "Nombres", "Apellidos", "Tipo", "Placa", "Marca", "Modelo", "Fecha registro", ...(verEliminadosParqueadero ? [""] : [])].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parqueaderosFiltrados.map((p, i) => (
+                      <tr key={p.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.unidad ? formatUnidad(p.unidad) : "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.numero_parqueadero}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.nombres}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.apellidos}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.tipo_vehiculo === "Moto" ? "🏍️ Moto" : "🚗 Carro"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111", fontWeight: 700 }}>{p.placa}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.marca}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{p.modelo}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(p.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                        {verEliminadosParqueadero && (
+                          <td style={{ padding: "8px 10px" }}>
+                            <button onClick={() => restaurarParqueadero(p.id)}
+                              style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              ↺ Restaurar
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

@@ -1,52 +1,44 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { calcularEdad, TIPOS_DOCUMENTO, TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
 import { formatUnidad } from "@/lib/unidad";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const VERDE_LIGHT = "#2E7D32";
 
-interface Registro {
+interface Parqueadero {
   id: string;
-  tipo_documento: string;
-  numero_documento: string;
+  unidad: string;
+  numero_parqueadero: string;
   nombres: string;
   apellidos: string;
-  telefono: string;
-  fecha_nacimiento: string;
-  correo_contacto: string;
-  es_contacto_principal: boolean;
-  unidad: string;
-  numero_matricula?: string;
-  direccion?: string;
-  ciudad?: string;
+  placa: string;
+  marca: string;
+  modelo: string;
+  tipo_vehiculo: string;
 }
 
 interface Props {
-  tipo: "residentes" | "propietarios";
-  titulo: string;
   correo: string;
   unidades: string[];
   token: string;
   onVolver: () => void;
 }
 
+const TIPOS_VEHICULO = ["Carro", "Moto"];
+
 const FORM_INIT = {
-  unidad: "", tipo_documento: "", numero_documento: "", nombres: "", apellidos: "",
-  telefono: "", fecha_nacimiento: "", correo_contacto: "",
-  numero_matricula: "", direccion: "", ciudad: "",
-  es_contacto_principal: false,
+  unidad: "", numero_parqueadero: "", nombres: "", apellidos: "",
+  placa: "", marca: "", modelo: "", tipo_vehiculo: "",
 };
 
-const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula", "ciudad"];
-const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["direccion"];
+const CAMPOS_REQUERIDOS: (keyof typeof FORM_INIT)[] = ["unidad", "numero_parqueadero", "nombres", "apellidos", "placa", "marca", "modelo", "tipo_vehiculo"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
 
-export default function RegistroModulo({ tipo, titulo, correo, unidades, token, onVolver }: Props) {
-  const [registros, setRegistros] = useState<Registro[]>([]);
+export default function ParqueaderoModulo({ correo, unidades, token, onVolver }: Props) {
+  const [registros, setRegistros] = useState<Parqueadero[]>([]);
   const [cargando, setCargando] = useState(true);
   const [verTodos, setVerTodos] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -61,13 +53,10 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
   const [error, setError] = useState("");
   const [errorCarga, setErrorCarga] = useState("");
 
-  const esPropietarios = tipo === "propietarios";
-  const sustantivo = esPropietarios ? "propietario" : "residente";
-
   const cargar = useCallback(async () => {
     setCargando(true); setErrorCarga("");
     try {
-      const res = await fetch(`/api/${tipo}?correo=${encodeURIComponent(correo)}`);
+      const res = await fetch(`/api/parqueaderos?correo=${encodeURIComponent(correo)}`);
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error(data?.error || "No se pudo cargar la información");
       setRegistros(data);
@@ -75,7 +64,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       setErrorCarga(e instanceof Error ? e.message : "No se pudo cargar la información");
     }
     setCargando(false);
-  }, [tipo, correo]);
+  }, [correo]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -83,14 +72,13 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
     setMostrarForm(false); setEditandoId(null); setForm(FORM_INIT); setAceptaTratamiento(false); setError("");
   };
 
-  const iniciarEdicion = (r: Registro) => {
+  const iniciarEdicion = (r: Parqueadero) => {
     setForm({
       unidad: r.unidad || "",
-      tipo_documento: r.tipo_documento, numero_documento: r.numero_documento.toUpperCase(),
-      nombres: r.nombres.toUpperCase(), apellidos: r.apellidos.toUpperCase(), telefono: r.telefono || "",
-      fecha_nacimiento: r.fecha_nacimiento, correo_contacto: r.correo_contacto || "",
-      numero_matricula: (r.numero_matricula || "").toUpperCase(), direccion: (r.direccion || "").toUpperCase(), ciudad: (r.ciudad || "").toUpperCase(),
-      es_contacto_principal: !!r.es_contacto_principal,
+      numero_parqueadero: r.numero_parqueadero.toUpperCase(),
+      nombres: r.nombres.toUpperCase(), apellidos: r.apellidos.toUpperCase(),
+      placa: r.placa.toUpperCase(), marca: r.marca.toUpperCase(), modelo: r.modelo.toUpperCase(),
+      tipo_vehiculo: r.tipo_vehiculo,
     });
     setEditandoId(r.id);
     setAceptaTratamiento(true);
@@ -113,7 +101,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       return;
     }
     setBorrandoId(confirmarBorrarId);
-    await fetch(`/api/${tipo}/${confirmarBorrarId}`, {
+    await fetch(`/api/parqueaderos/${confirmarBorrarId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ correo }),
@@ -123,20 +111,13 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
     cargar();
   };
 
-  const necesitaCorreo = !TIPOS_DOCUMENTO_SIN_CORREO.includes(form.tipo_documento);
-
   const guardar = async () => {
     if (!editandoId && !aceptaTratamiento) { setError("Debes aceptar el tratamiento de datos personales para continuar"); return; }
-    const requeridos = [
-      ...CAMPOS_REQUERIDOS_COMUNES,
-      ...(necesitaCorreo ? (["correo_contacto"] as (keyof typeof FORM_INIT)[]) : []),
-      ...(esPropietarios ? CAMPOS_REQUERIDOS_PROPIETARIOS : []),
-    ];
-    const faltante = requeridos.find(k => !form[k]);
+    const faltante = CAMPOS_REQUERIDOS.find(k => !form[k]);
     if (faltante) { setError("Completa todos los campos obligatorios"); return; }
 
     setGuardando(true); setError("");
-    const url = editandoId ? `/api/${tipo}/${editandoId}` : `/api/${tipo}`;
+    const url = editandoId ? `/api/parqueaderos/${editandoId}` : "/api/parqueaderos";
     const res = await fetch(url, {
       method: editandoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -160,9 +141,9 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
         ← Volver al menú
       </button>
 
-      <h2 style={{ fontSize: 18, fontWeight: 800, color: VERDE, marginBottom: 4 }}>{titulo}</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 800, color: VERDE, marginBottom: 4 }}>Parqueadero</h2>
       <p style={{ fontSize: 13, color: "#111", marginBottom: 20 }}>
-        Registra y mantén actualizada la información de {tipo === "residentes" ? "las personas que residen en tu unidad" : "los propietarios de tu unidad"}.
+        Registra y mantén actualizados los vehículos de tu unidad.
       </p>
 
       {cargando ? (
@@ -175,25 +156,21 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
           </button>
         </div>
       ) : registros.length === 0 ? (
-        <p style={{ fontSize: 13, color: "#111", marginBottom: 16 }}>Aún no has registrado a ningún {sustantivo}.</p>
+        <p style={{ fontSize: 13, color: "#111", marginBottom: 16 }}>Aún no has registrado ningún vehículo.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
           {visibles.map(r => (
             <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>
-                  {r.nombres} {r.apellidos} {r.es_contacto_principal && <span style={{ color: NARANJA }}>★ Contacto principal</span>}
+                  {r.tipo_vehiculo === "Moto" ? "🏍️" : "🚗"} {r.placa} — {r.marca} {r.modelo}
                 </p>
                 <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
-                  {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años{r.telefono ? ` · ${r.telefono}` : ""}
+                  Parqueadero {r.numero_parqueadero} · {formatUnidad(r.unidad)}
                 </p>
-                {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{formatUnidad(r.unidad)}</p>}
-                {r.correo_contacto && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{r.correo_contacto}</p>}
-                {(r.direccion || r.ciudad || r.numero_matricula) && (
-                  <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                    {[esPropietarios ? r.direccion : null, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
-                  </p>
-                )}
+                <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
+                  {r.nombres} {r.apellidos}
+                </p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                 <button onClick={() => iniciarEdicion(r)}
@@ -218,38 +195,27 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       {!mostrarForm ? (
         <button onClick={() => setMostrarForm(true)}
           style={{ width: "100%", background: VERDE, color: "#fff", border: "none", borderRadius: 10, padding: 13, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
-          + Registrar un {sustantivo}
+          + Registrar un vehículo
         </button>
       ) : (
         <div style={{ border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: 18 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, color: VERDE, margin: 0 }}>
-              {editandoId ? `Editar ${sustantivo}` : `Nuevo ${sustantivo}`}
+              {editandoId ? "Editar vehículo" : "Nuevo vehículo"}
             </h3>
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Unidad</label>
-            <select value={form.unidad} onChange={e => setForm(f => ({ ...f, unidad: e.target.value }))} style={inputStyle}>
-              <option value="">Selecciona...</option>
-              {unidades.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
-            </select>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
-              <label style={labelStyle}>Tipo de documento</label>
-              <select value={form.tipo_documento} onChange={e => {
-                const val = e.target.value;
-                setForm(f => ({ ...f, tipo_documento: val, correo_contacto: TIPOS_DOCUMENTO_SIN_CORREO.includes(val) ? "" : f.correo_contacto }));
-              }} style={inputStyle}>
+              <label style={labelStyle}>Unidad</label>
+              <select value={form.unidad} onChange={e => setForm(f => ({ ...f, unidad: e.target.value }))} style={inputStyle}>
                 <option value="">Selecciona...</option>
-                {TIPOS_DOCUMENTO.map(t => <option key={t} value={t}>{t}</option>)}
+                {unidades.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Número de documento</label>
-              <input value={form.numero_documento} onChange={e => setForm(f => ({ ...f, numero_documento: e.target.value.toUpperCase() }))} style={inputStyle}/>
+              <label style={labelStyle}>Número de parqueadero</label>
+              <input value={form.numero_parqueadero} onChange={e => setForm(f => ({ ...f, numero_parqueadero: e.target.value.toUpperCase() }))} style={inputStyle}/>
             </div>
           </div>
 
@@ -264,56 +230,35 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-            <div>
-              <label style={labelStyle}>Teléfono</label>
-              <input value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} style={inputStyle}/>
-            </div>
-            <div>
-              <label style={labelStyle}>Fecha de nacimiento</label>
-              <input type="date" value={form.fecha_nacimiento} onChange={e => setForm(f => ({ ...f, fecha_nacimiento: e.target.value }))} style={inputStyle}/>
-              {form.fecha_nacimiento && (
-                <p style={{ fontSize: 11, color: VERDE, fontWeight: 700, margin: "4px 0 0" }}>{calcularEdad(form.fecha_nacimiento)} años</p>
-              )}
-            </div>
-          </div>
-
-          {necesitaCorreo && (
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Correo electrónico</label>
-              <input type="email" value={form.correo_contacto} onChange={e => setForm(f => ({ ...f, correo_contacto: e.target.value }))} style={inputStyle} placeholder="correo@ejemplo.com"/>
-            </div>
-          )}
-
-          <div style={{ display: "grid", gridTemplateColumns: esPropietarios ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
-            <div>
-              <label style={labelStyle}>Número de matrícula inmobiliaria</label>
-              <input value={form.numero_matricula} onChange={e => setForm(f => ({ ...f, numero_matricula: e.target.value.toUpperCase() }))} style={inputStyle}/>
-            </div>
-            {esPropietarios && (
-              <div>
-                <label style={labelStyle}>Dirección</label>
-                <input value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value.toUpperCase() }))} style={inputStyle}/>
-              </div>
-            )}
-          </div>
-
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Ciudad</label>
-            <input value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="TOCANCIPÁ"/>
+            <label style={labelStyle}>Tipo de vehículo</label>
+            <select value={form.tipo_vehiculo} onChange={e => setForm(f => ({ ...f, tipo_vehiculo: e.target.value }))} style={inputStyle}>
+              <option value="">Selecciona...</option>
+              {TIPOS_VEHICULO.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 14 }}>
-            <input type="checkbox" checked={form.es_contacto_principal} onChange={e => setForm(f => ({ ...f, es_contacto_principal: e.target.checked }))}/>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Es el titular para contacto</span>
-          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div>
+              <label style={labelStyle}>Placa</label>
+              <input value={form.placa} onChange={e => setForm(f => ({ ...f, placa: e.target.value.toUpperCase() }))} style={inputStyle}/>
+            </div>
+            <div>
+              <label style={labelStyle}>Marca</label>
+              <input value={form.marca} onChange={e => setForm(f => ({ ...f, marca: e.target.value.toUpperCase() }))} style={inputStyle}/>
+            </div>
+            <div>
+              <label style={labelStyle}>Modelo</label>
+              <input value={form.modelo} onChange={e => setForm(f => ({ ...f, modelo: e.target.value.toUpperCase() }))} style={inputStyle}/>
+            </div>
+          </div>
 
           {!editandoId && (
             <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
               <p style={{ fontSize: 11, color: "#555", lineHeight: 1.6, margin: "0 0 10px" }}>
                 Al registrar esta información usted autoriza a la Agrupación El Portal de Tocancipá para el tratamiento
                 de los datos personales aquí suministrados, conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013,
-                con la finalidad exclusiva de actualizar la base de datos de copropietarios y residentes de la
+                con la finalidad exclusiva de actualizar la base de datos de vehículos y parqueaderos de la
                 copropiedad. Estos datos no serán compartidos con terceros distintos a la administración, salvo
                 requerimiento de autoridad competente.
               </p>

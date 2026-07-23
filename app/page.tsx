@@ -1,18 +1,20 @@
 "use client";
 import { useState } from "react";
 import RegistroModulo from "./components/RegistroModulo";
+import ParqueaderoModulo from "./components/ParqueaderoModulo";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const VERDE_LIGHT = "#2E7D32";
 
-type Fase = "bienvenida" | "menu" | "encuestas" | "residentes" | "propietarios" | "gracias";
+type Fase = "bienvenida" | "menu" | "encuestas" | "residentes" | "propietarios" | "parqueadero" | "gracias";
 
 interface Votante {
   nombre: string;
   cantidad: number;
   correo: string;
   unidades: string[];
+  puedeVotar: boolean;
 }
 
 interface Encuesta {
@@ -55,14 +57,11 @@ export default function Home() {
       if (!data.encontrado) {
         setPopupMsg("Correo no encontrado. Si tienes inquietudes comunícate con la administradora.");
         setPopup(true);
-      } else if (!data.habilitado) {
-        setPopupMsg("Usted no está habilitado para votar. Comuníquese con la administradora.");
-        setPopup(true);
       } else if (!data.tokenValido) {
         setPopupMsg("Token incorrecto. Verifique el token enviado y vuelva a intentarlo.");
         setPopup(true);
       } else {
-        setVotante(data.votante);
+        setVotante({ ...data.votante, puedeVotar: !!data.puedeVotar });
         const encRes = await fetch(`/api/encuestas?correo=${encodeURIComponent(c)}`);
         const encData: any[] = await encRes.json();
         const mapped: Encuesta[] = encData.map((e: any) => ({
@@ -235,13 +234,15 @@ export default function Home() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <button onClick={abrirVotaciones}
-                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
+                <button onClick={votante.puedeVotar ? abrirVotaciones : undefined} disabled={!votante.puedeVotar}
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: votante.puedeVotar ? "#fff" : "#f5f5f5", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: votante.puedeVotar ? "pointer" : "not-allowed", opacity: votante.puedeVotar ? 1 : 0.6 }}>
                   <div style={{ fontSize: 28 }}>🗳️</div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Votaciones</p>
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>
-                      {pendientesVotacion > 0 ? `${pendientesVotacion} votación(es) pendiente(s)` : "Participa en las votaciones activas"}
+                      {!votante.puedeVotar
+                        ? "No estás habilitado(a) para votar. Comunícate con la administradora."
+                        : pendientesVotacion > 0 ? `${pendientesVotacion} votación(es) pendiente(s)` : "Participa en las votaciones activas"}
                     </p>
                   </div>
                 </button>
@@ -263,6 +264,15 @@ export default function Home() {
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Mantén al día los propietarios de tu unidad</p>
                   </div>
                 </button>
+
+                <button onClick={() => setFase("parqueadero")}
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
+                  <div style={{ fontSize: 28 }}>🚗</div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Parqueadero</p>
+                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Registra los vehículos de tu unidad</p>
+                  </div>
+                </button>
               </div>
             </>
           )}
@@ -273,6 +283,10 @@ export default function Home() {
 
           {fase === "propietarios" && votante && (
             <RegistroModulo tipo="propietarios" titulo="Registro y actualización de propietarios" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+          )}
+
+          {fase === "parqueadero" && votante && (
+            <ParqueaderoModulo correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
           )}
 
           {fase === "encuestas" && votante && (

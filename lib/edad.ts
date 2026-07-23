@@ -17,3 +17,6 @@ export const TIPOS_DOCUMENTO = [
   "Registro civil",
   "Pasaporte",
 ];
+
+// Documentos típicos de menores de edad: no se les exige correo propio.
+export const TIPOS_DOCUMENTO_SIN_CORREO = ["Registro civil", "Tarjeta de identidad"];
