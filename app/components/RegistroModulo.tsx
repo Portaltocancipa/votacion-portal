@@ -37,12 +37,18 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
   const [aceptaTratamiento, setAceptaTratamiento] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const [errorCarga, setErrorCarga] = useState("");
 
   const cargar = useCallback(async () => {
-    setCargando(true);
-    const res = await fetch(`/api/${tipo}?correo=${encodeURIComponent(correo)}`);
-    const data = await res.json();
-    setRegistros(Array.isArray(data) ? data : []);
+    setCargando(true); setErrorCarga("");
+    try {
+      const res = await fetch(`/api/${tipo}?correo=${encodeURIComponent(correo)}`);
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error(data?.error || "No se pudo cargar la información");
+      setRegistros(data);
+    } catch (e) {
+      setErrorCarga(e instanceof Error ? e.message : "No se pudo cargar la información");
+    }
     setCargando(false);
   }, [tipo, correo]);
 
@@ -87,6 +93,13 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
 
       {cargando ? (
         <p style={{ fontSize: 13, color: "#111" }}>Cargando...</p>
+      ) : errorCarga ? (
+        <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: "#ef4444", margin: "0 0 8px" }}>{errorCarga}</p>
+          <button onClick={cargar} style={{ background: "none", border: "none", color: NARANJA, fontWeight: 700, fontSize: 12, cursor: "pointer", padding: 0 }}>
+            Reintentar
+          </button>
+        </div>
       ) : registros.length === 0 ? (
         <p style={{ fontSize: 13, color: "#111", marginBottom: 16 }}>Aún no has registrado a ningún {sustantivo}.</p>
       ) : (
