@@ -17,13 +17,20 @@ export interface RegistroInput {
   es_contacto_principal?: boolean;
 }
 
-export function validarRegistro(body: Partial<RegistroInput>): string | null {
+export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInput>): string | null {
   if (!body.correo) return "Falta el correo";
   if (!body.tipo_documento) return "Selecciona el tipo de documento";
   if (!body.numero_documento) return "Falta el número de documento";
   if (!body.nombres) return "Faltan los nombres";
   if (!body.apellidos) return "Faltan los apellidos";
+  if (!body.telefono) return "Falta el teléfono";
   if (!body.fecha_nacimiento) return "Falta la fecha de nacimiento";
+  if (!body.correo_contacto) return "Falta el correo electrónico";
+  if (tabla === "propietarios") {
+    if (!body.numero_matricula) return "Falta el número de matrícula inmobiliaria";
+    if (!body.direccion) return "Falta la dirección";
+    if (!body.ciudad) return "Falta la ciudad";
+  }
   return null;
 }
 
@@ -38,17 +45,18 @@ export async function listarPorCorreo(tabla: TablaRegistro, correo: string) {
   return data ?? [];
 }
 
-async function desmarcarOtrosContactos(tabla: TablaRegistro, correo: string, excluirId?: string) {
+async function verificarContactoUnico(tabla: TablaRegistro, correo: string, excluirId?: string) {
   const supabase = getSupabase();
-  let query = supabase.from(tabla).update({ es_contacto_principal: false }).eq("correo", correo.toLowerCase());
+  let query = supabase.from(tabla).select("id").eq("correo", correo.toLowerCase()).eq("es_contacto_principal", true);
   if (excluirId) query = query.neq("id", excluirId);
-  const { error } = await query;
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
+  if (data && data.length > 0) throw new Error("Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.");
 }
 
 export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput) {
   const supabase = getSupabase();
-  if (input.es_contacto_principal) await desmarcarOtrosContactos(tabla, input.correo);
+  if (input.es_contacto_principal) await verificarContactoUnico(tabla, input.correo);
 
   const { data, error } = await supabase
     .from(tabla)
@@ -66,7 +74,7 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
   if (!existente) throw new Error("Registro no encontrado");
   if (existente.correo.toLowerCase() !== correo.toLowerCase()) throw new Error("No autorizado para editar este registro");
 
-  if (input.es_contacto_principal) await desmarcarOtrosContactos(tabla, correo, id);
+  if (input.es_contacto_principal) await verificarContactoUnico(tabla, correo, id);
 
   const { correo: correoInput, ...campos } = input;
   void correoInput;

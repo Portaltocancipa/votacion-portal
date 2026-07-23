@@ -35,7 +35,8 @@ const FORM_INIT = {
   es_contacto_principal: false,
 };
 
-const CAMPOS_REQUERIDOS: (keyof typeof FORM_INIT)[] = ["tipo_documento", "numero_documento", "nombres", "apellidos", "fecha_nacimiento"];
+const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "correo_contacto"];
+const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["numero_matricula", "direccion", "ciudad"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
@@ -76,10 +77,10 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
 
   const iniciarEdicion = (r: Registro) => {
     setForm({
-      tipo_documento: r.tipo_documento, numero_documento: r.numero_documento,
-      nombres: r.nombres, apellidos: r.apellidos, telefono: r.telefono || "",
+      tipo_documento: r.tipo_documento, numero_documento: r.numero_documento.toUpperCase(),
+      nombres: r.nombres.toUpperCase(), apellidos: r.apellidos.toUpperCase(), telefono: r.telefono || "",
       fecha_nacimiento: r.fecha_nacimiento, correo_contacto: r.correo_contacto || "",
-      numero_matricula: r.numero_matricula || "", direccion: r.direccion || "", ciudad: r.ciudad || "",
+      numero_matricula: (r.numero_matricula || "").toUpperCase(), direccion: (r.direccion || "").toUpperCase(), ciudad: (r.ciudad || "").toUpperCase(),
       es_contacto_principal: !!r.es_contacto_principal,
     });
     setEditandoId(r.id);
@@ -90,7 +91,8 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
 
   const guardar = async () => {
     if (!editandoId && !aceptaTratamiento) { setError("Debes aceptar el tratamiento de datos personales para continuar"); return; }
-    const faltante = CAMPOS_REQUERIDOS.find(k => !form[k]);
+    const requeridos = esPropietarios ? [...CAMPOS_REQUERIDOS_COMUNES, ...CAMPOS_REQUERIDOS_PROPIETARIOS] : CAMPOS_REQUERIDOS_COMUNES;
+    const faltante = requeridos.find(k => !form[k]);
     if (faltante) { setError("Completa todos los campos obligatorios"); return; }
 
     setGuardando(true); setError("");
@@ -189,18 +191,18 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
             </div>
             <div>
               <label style={labelStyle}>Número de documento</label>
-              <input value={form.numero_documento} onChange={e => setForm(f => ({ ...f, numero_documento: e.target.value }))} style={inputStyle}/>
+              <input value={form.numero_documento} onChange={e => setForm(f => ({ ...f, numero_documento: e.target.value.toUpperCase() }))} style={inputStyle}/>
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
               <label style={labelStyle}>Nombres</label>
-              <input value={form.nombres} onChange={e => setForm(f => ({ ...f, nombres: e.target.value }))} style={inputStyle}/>
+              <input value={form.nombres} onChange={e => setForm(f => ({ ...f, nombres: e.target.value.toUpperCase() }))} style={inputStyle}/>
             </div>
             <div>
               <label style={labelStyle}>Apellidos</label>
-              <input value={form.apellidos} onChange={e => setForm(f => ({ ...f, apellidos: e.target.value }))} style={inputStyle}/>
+              <input value={form.apellidos} onChange={e => setForm(f => ({ ...f, apellidos: e.target.value.toUpperCase() }))} style={inputStyle}/>
             </div>
           </div>
 
@@ -227,16 +229,16 @@ export default function RegistroModulo({ tipo, titulo, correo, onVolver }: Props
             <>
               <div style={{ marginBottom: 14 }}>
                 <label style={labelStyle}>Número de matrícula inmobiliaria</label>
-                <input value={form.numero_matricula} onChange={e => setForm(f => ({ ...f, numero_matricula: e.target.value }))} style={inputStyle}/>
+                <input value={form.numero_matricula} onChange={e => setForm(f => ({ ...f, numero_matricula: e.target.value.toUpperCase() }))} style={inputStyle}/>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div>
                   <label style={labelStyle}>Dirección</label>
-                  <input value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} style={inputStyle}/>
+                  <input value={form.direccion} onChange={e => setForm(f => ({ ...f, direccion: e.target.value.toUpperCase() }))} style={inputStyle}/>
                 </div>
                 <div>
                   <label style={labelStyle}>Ciudad</label>
-                  <input value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))} style={inputStyle} placeholder="Tocancipá"/>
+                  <input value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value.toUpperCase() }))} style={inputStyle} placeholder="TOCANCIPÁ"/>
                 </div>
               </div>
             </>

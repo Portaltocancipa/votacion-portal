@@ -4,7 +4,7 @@ import { actualizarRegistro, validarRegistro } from "@/lib/registros";
 export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const body = await req.json();
-  const errorValidacion = validarRegistro(body);
+  const errorValidacion = validarRegistro("residentes", body);
   if (errorValidacion) return NextResponse.json({ error: errorValidacion }, { status: 400 });
 
   try {

@@ -53,7 +53,7 @@ export default function AdminPage() {
   const [key, setKey] = useState("");
   const [autenticado, setAutenticado] = useState(false);
   const [errorAuth, setErrorAuth] = useState("");
-  const [tab, setTab] = useState<"resultados" | "encuestas" | "registros">("resultados");
+  const [tab, setTab] = useState<"resultados" | "encuestas" | "registros" | "contactos">("resultados");
 
   const [registrosTipo, setRegistrosTipo] = useState<"residentes" | "propietarios">("residentes");
   const [registros, setRegistros] = useState<RegistroAdmin[]>([]);
@@ -113,7 +113,7 @@ export default function AdminPage() {
   }, [autenticado]);
 
   useEffect(() => {
-    if (autenticado && tab === "registros") cargarRegistros(registrosTipo);
+    if (autenticado && (tab === "registros" || tab === "contactos")) cargarRegistros(registrosTipo);
   }, [autenticado, tab, registrosTipo, cargarRegistros]);
 
   useEffect(() => {
@@ -311,7 +311,7 @@ export default function AdminPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"], ["registros", "🏠 Registros"]] as const).map(([t, label]) => (
+          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"], ["registros", "🏠 Registros"], ["contactos", "📞 Contactos"]] as const).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
                 background: tab === t ? VERDE : "#fff", color: tab === t ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
@@ -649,6 +649,56 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {tab === "contactos" && (
+          <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+              {([["residentes", "Residentes"], ["propietarios", "Propietarios"]] as const).map(([t, label]) => (
+                <button key={t} onClick={() => setRegistrosTipo(t)}
+                  style={{ padding: "8px 18px", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                    background: registrosTipo === t ? VERDE : "#f0f0f0", color: registrosTipo === t ? "#fff" : "#555" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 16, fontSize: 15 }}>
+              Titular de comunicaciones · {registrosTipo === "residentes" ? "Residentes" : "Propietarios"}
+            </h3>
+
+            {cargandoRegistros ? (
+              <p style={{ color: "#111", fontSize: 13 }}>Cargando...</p>
+            ) : (
+              (() => {
+                const titulares = registros.filter(r => r.es_contacto_principal);
+                if (titulares.length === 0) {
+                  return <p style={{ color: "#111", fontSize: 13 }}>Aún no hay titular de comunicaciones seleccionado para {registrosTipo}.</p>;
+                }
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {titulares.map(r => (
+                      <div key={r.id} style={{ border: `2px solid ${NARANJA}40`, background: "#fff8f0", borderRadius: 10, padding: "14px 16px" }}>
+                        <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: 0 }}>★ {r.nombres} {r.apellidos}</p>
+                        <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
+                          {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años
+                        </p>
+                        <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
+                          📞 {r.telefono || "—"} · ✉️ {r.correo_contacto || "—"}
+                        </p>
+                        {registrosTipo === "propietarios" && (r.direccion || r.ciudad || r.numero_matricula) && (
+                          <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
+                            {[r.direccion, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
+                        <p style={{ fontSize: 11, color: "#999", margin: "4px 0 0" }}>Cuenta: {r.correo}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
             )}
           </div>
         )}

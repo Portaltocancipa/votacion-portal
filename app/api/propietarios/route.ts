@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const errorValidacion = validarRegistro(body);
+  const errorValidacion = validarRegistro("propietarios", body);
   if (errorValidacion) return NextResponse.json({ error: errorValidacion }, { status: 400 });
 
   const votante = await buscarVotante(String(body.correo).toLowerCase());
