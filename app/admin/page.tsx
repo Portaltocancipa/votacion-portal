@@ -1,11 +1,24 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import * as XLSX from "xlsx";
+import { calcularEdad } from "@/lib/edad";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const ADMIN_KEY = "portal2026";
 const BASE_TOTAL = 80;
+
+interface RegistroAdmin {
+  id: string;
+  correo: string;
+  tipo_documento: string;
+  numero_documento: string;
+  nombres: string;
+  apellidos: string;
+  telefono: string;
+  fecha_nacimiento: string;
+  created_at: string;
+}
 
 interface EncuestaResult {
   id: string;
@@ -35,7 +48,11 @@ export default function AdminPage() {
   const [key, setKey] = useState("");
   const [autenticado, setAutenticado] = useState(false);
   const [errorAuth, setErrorAuth] = useState("");
-  const [tab, setTab] = useState<"resultados" | "encuestas">("resultados");
+  const [tab, setTab] = useState<"resultados" | "encuestas" | "registros">("resultados");
+
+  const [registrosTipo, setRegistrosTipo] = useState<"residentes" | "propietarios">("residentes");
+  const [registros, setRegistros] = useState<RegistroAdmin[]>([]);
+  const [cargandoRegistros, setCargandoRegistros] = useState(false);
 
   const [datos, setDatos] = useState<EncuestaResult[]>([]);
   const [encSeleccionada, setEncSeleccionada] = useState("");
@@ -78,9 +95,21 @@ export default function AdminPage() {
     setEncuestas(Array.isArray(data) ? data : []);
   };
 
+  const cargarRegistros = useCallback(async (tipo: "residentes" | "propietarios") => {
+    setCargandoRegistros(true);
+    const res = await fetch(`/api/admin/registros?key=${ADMIN_KEY}&tabla=${tipo}`);
+    const data = await res.json();
+    setRegistros(Array.isArray(data) ? data : []);
+    setCargandoRegistros(false);
+  }, []);
+
   useEffect(() => {
     if (autenticado) { cargarResultados(); cargarEncuestas(); }
   }, [autenticado]);
+
+  useEffect(() => {
+    if (autenticado && tab === "registros") cargarRegistros(registrosTipo);
+  }, [autenticado, tab, registrosTipo, cargarRegistros]);
 
   useEffect(() => {
     if (encSeleccionada) cargarFaltan(encSeleccionada);
@@ -217,6 +246,23 @@ export default function AdminPage() {
     XLSX.writeFile(wb, `resultados_${encActual.pregunta.substring(0, 30).replace(/\s+/g, "_")}.xlsx`);
   };
 
+  const exportarRegistrosXLSX = () => {
+    const filas = registros.map(r => ({
+      Nombres: r.nombres,
+      Apellidos: r.apellidos,
+      "Tipo Documento": r.tipo_documento,
+      "N° Documento": r.numero_documento,
+      Teléfono: r.telefono || "",
+      Edad: calcularEdad(r.fecha_nacimiento),
+      Correo: r.correo,
+      "Fecha registro": new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
+    }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, registrosTipo);
+    XLSX.writeFile(wb, `${registrosTipo}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   if (!autenticado) return (
     <div style={{ minHeight: "100vh", background: VERDE, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, fontFamily: "system-ui" }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: "36px 32px", maxWidth: 360, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
@@ -253,7 +299,7 @@ export default function AdminPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"]] as const).map(([t, label]) => (
+          {([["resultados", "📊 Resultados"], ["encuestas", "📋 Encuestas"], ["registros", "🏠 Registros"]] as const).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
                 background: tab === t ? VERDE : "#fff", color: tab === t ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
@@ -526,6 +572,61 @@ export default function AdminPage() {
               )}
             </div>
           </>
+        )}
+
+        {tab === "registros" && (
+          <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([["residentes", "Residentes"], ["propietarios", "Propietarios"]] as const).map(([t, label]) => (
+                  <button key={t} onClick={() => setRegistrosTipo(t)}
+                    style={{ padding: "8px 18px", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      background: registrosTipo === t ? VERDE : "#f0f0f0", color: registrosTipo === t ? "#fff" : "#555" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={exportarRegistrosXLSX} disabled={registros.length === 0}
+                style={{ background: registros.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: registros.length === 0 ? "not-allowed" : "pointer" }}>
+                ⬇ Exportar Excel
+              </button>
+            </div>
+
+            <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 16, fontSize: 15 }}>
+              {registrosTipo === "residentes" ? "Residentes registrados" : "Propietarios registrados"} ({registros.length})
+            </h3>
+
+            {cargandoRegistros ? (
+              <p style={{ color: "#111", fontSize: 13 }}>Cargando...</p>
+            ) : registros.length === 0 ? (
+              <p style={{ color: "#111", fontSize: 13 }}>Aún no hay registros en este módulo.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f9f9f9" }}>
+                      {["Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo", "Fecha registro"].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registros.map(r => (
+                      <tr key={r.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.nombres}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.apellidos}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.tipo_documento} {r.numero_documento}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.telefono || "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{calcularEdad(r.fecha_nacimiento)}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

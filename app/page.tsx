@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
+import RegistroModulo from "./components/RegistroModulo";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const VERDE_LIGHT = "#2E7D32";
 
-type Fase = "bienvenida" | "encuestas" | "gracias";
+type Fase = "bienvenida" | "menu" | "encuestas" | "residentes" | "propietarios" | "gracias";
 
 interface Votante {
   nombre: string;
@@ -72,17 +73,24 @@ export default function Home() {
           error: "",
         }));
         setEncuestas(mapped);
-        if (mapped.length > 0 && mapped.every(e => e.respondida)) {
-          setFase("gracias");
-        } else {
-          setFase("encuestas");
-        }
+        setFase("menu");
       }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
     }
     setCargando(false);
   };
+
+  const salir = () => {
+    setFase("bienvenida"); setCorreo(""); setToken(""); setVotante(null); setEncuestas([]);
+  };
+
+  const abrirVotaciones = () => {
+    if (encuestas.length > 0 && encuestas.every(e => e.respondida)) setFase("gracias");
+    else setFase("encuestas");
+  };
+
+  const pendientesVotacion = encuestas.filter(e => !e.respondida).length;
 
   const toggleOpcion = (encId: string, op: string, tipo: "unica" | "multiple") => {
     setEncuestas(prev => prev.map(e => {
@@ -142,16 +150,9 @@ export default function Home() {
               Su respuesta ha sido registrada exitosamente. Gracias por participar.
             </p>
             <button
-              onClick={() => {
-                setPopupVoto(false);
-                setFase("bienvenida");
-                setCorreo("");
-                setToken("");
-                setVotante(null);
-                setEncuestas([]);
-              }}
+              onClick={() => { setPopupVoto(false); setFase("menu"); }}
               style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 8, padding: "13px 40px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
-              Salir
+              ← Volver al menú
             </button>
           </div>
         </div>
@@ -164,11 +165,11 @@ export default function Home() {
             Agrupación El Portal · Tocancipá
           </div>
           <h1 style={{ color: "#fff", fontSize: 21, fontWeight: 800, margin: 0, lineHeight: 1.3 }}>
-            Bienvenido al sistema de votación del Portal de Tocancipá
+            Sistema de Autogestión Agrupación El Portal de Tocancipá
           </h1>
           <div style={{ marginTop: 14, background: NARANJA, display: "inline-block", borderRadius: 8, padding: "7px 18px" }}>
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>
-              Encuentre aqui las votaciones de la copropiedad
+              Votaciones, residentes y propietarios de la copropiedad
             </span>
           </div>
         </div>
@@ -182,7 +183,7 @@ export default function Home() {
                   VALIDADOR DE ACCESO
                 </div>
                 <p style={{ fontSize: 13, color: "#111", margin: 0 }}>
-                  Ingrese su correo y el token de acceso enviado por la administradora para participar en las votaciones.
+                  Ingrese su correo y el token de acceso enviado por la administradora para ingresar al sistema.
                 </p>
               </div>
 
@@ -220,6 +221,60 @@ export default function Home() {
             </>
           )}
 
+          {fase === "menu" && votante && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f1f8e9", border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                <div>
+                  <p style={{ fontSize: 17, fontWeight: 800, color: VERDE, margin: "0 0 2px" }}>Hola, {votante.nombre}</p>
+                  <p style={{ fontSize: 13, color: "#111", margin: 0 }}>Elige qué quieres hacer.</p>
+                </div>
+                <button onClick={salir}
+                  style={{ background: "#fff", color: NARANJA, border: `2px solid ${NARANJA}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                  Salir
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <button onClick={abrirVotaciones}
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
+                  <div style={{ fontSize: 28 }}>🗳️</div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Votaciones</p>
+                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>
+                      {pendientesVotacion > 0 ? `${pendientesVotacion} votación(es) pendiente(s)` : "Participa en las votaciones activas"}
+                    </p>
+                  </div>
+                </button>
+
+                <button onClick={() => setFase("residentes")}
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
+                  <div style={{ fontSize: 28 }}>🏠</div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Registro y actualización de residentes</p>
+                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Mantén al día quiénes viven en tu unidad</p>
+                  </div>
+                </button>
+
+                <button onClick={() => setFase("propietarios")}
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
+                  <div style={{ fontSize: 28 }}>📑</div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Registro y actualización de propietarios</p>
+                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Mantén al día los propietarios de tu unidad</p>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+
+          {fase === "residentes" && votante && (
+            <RegistroModulo tipo="residentes" titulo="Registro y actualización de residentes" correo={votante.correo} onVolver={() => setFase("menu")}/>
+          )}
+
+          {fase === "propietarios" && votante && (
+            <RegistroModulo tipo="propietarios" titulo="Registro y actualización de propietarios" correo={votante.correo} onVolver={() => setFase("menu")}/>
+          )}
+
           {fase === "encuestas" && votante && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f1f8e9", border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
@@ -229,10 +284,9 @@ export default function Home() {
                     Su voto vale por <strong>{votante.cantidad}</strong>.
                   </p>
                 </div>
-                <button
-                  onClick={() => { setFase("bienvenida"); setCorreo(""); setToken(""); setVotante(null); setEncuestas([]); }}
-                  style={{ background: "#fff", color: NARANJA, border: `2px solid ${NARANJA}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                  Salir
+                <button onClick={() => setFase("menu")}
+                  style={{ background: "#fff", color: VERDE, border: `2px solid ${VERDE}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                  ← Menú
                 </button>
               </div>
 
@@ -297,15 +351,19 @@ export default function Home() {
             <div style={{ textAlign: "center", padding: "20px 0" }}>
               <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: VERDE, marginBottom: 12 }}>¡Gracias por participar!</h2>
-              <p style={{ fontSize: 15, color: "#111", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 15, color: "#111", lineHeight: 1.6, marginBottom: 24 }}>
                 Tus respuestas han sido registradas exitosamente.
               </p>
+              <button onClick={() => setFase("menu")}
+                style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 10, padding: "13px 32px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+                ← Volver al menú
+              </button>
             </div>
           )}
         </div>
 
         <div style={{ background: "#f5f5f5", borderTop: "1px solid #eee", padding: "14px 32px", textAlign: "center" }}>
-          <span style={{ fontSize: 11, color: "#bbb" }}>Agrupación El Portal de Tocancipá · Sistema de votación digital 2026</span>
+          <span style={{ fontSize: 11, color: "#bbb" }}>Agrupación El Portal de Tocancipá · Sistema de Autogestión 2026</span>
         </div>
       </div>
     </div>

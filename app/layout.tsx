@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema de Votación · Portal de Tocancipá",
-  description: "Votación digital para la Asamblea Extraordinaria del Portal de Tocancipá",
+  title: "Sistema de Autogestión · Agrupación El Portal de Tocancipá",
+  description: "Votaciones, registro de residentes y de propietarios de la Agrupación El Portal de Tocancipá",
 };
 
 export default function RootLayout({
