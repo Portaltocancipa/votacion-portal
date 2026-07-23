@@ -2,6 +2,8 @@
 import { useState } from "react";
 import RegistroModulo from "./components/RegistroModulo";
 import ParqueaderoModulo from "./components/ParqueaderoModulo";
+import MascotasModulo from "./components/MascotasModulo";
+import BicicletasModulo from "./components/BicicletasModulo";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
@@ -272,7 +274,11 @@ export default function Home() {
           )}
 
           {fase === "residentes" && votante && (
-            <RegistroModulo tipo="residentes" titulo="Registro y actualización de residentes" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+            <>
+              <RegistroModulo tipo="residentes" titulo="Registro y actualización de residentes" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+              <MascotasModulo correo={votante.correo} unidades={votante.unidades} token={token}/>
+              <BicicletasModulo correo={votante.correo} unidades={votante.unidades} token={token}/>
+            </>
           )}
 
           {fase === "propietarios" && votante && (

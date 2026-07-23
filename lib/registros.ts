@@ -16,6 +16,7 @@ export interface RegistroInput {
   ciudad?: string;
   correo_contacto?: string;
   es_contacto_principal?: boolean;
+  inmueble_arrendado?: string;
   es_titular_arriendo?: boolean;
   unidad?: string;
 }
@@ -36,6 +37,12 @@ export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInpu
   if (tabla === "propietarios") {
     if (!body.direccion) return "Falta la dirección";
     if (!body.ciudad) return "Falta la ciudad";
+  }
+  if (tabla === "residentes") {
+    if (!body.inmueble_arrendado) return "Indica si el inmueble está arrendado";
+    if (body.es_titular_arriendo && body.inmueble_arrendado !== "Sí") {
+      return "El titular del arriendo solo aplica si el inmueble está arrendado";
+    }
   }
   return null;
 }

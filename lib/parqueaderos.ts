@@ -18,6 +18,7 @@ export function validarParqueadero(body: Partial<ParqueaderoInput>): string | nu
   if (!body.correo) return "Falta el correo";
   if (!body.unidad) return "Selecciona la unidad";
   if (!body.numero_parqueadero) return "Falta el número de parqueadero";
+  if (!/^\d+$/.test(body.numero_parqueadero)) return "El número de parqueadero solo puede tener dígitos";
   if (!body.nombres) return "Faltan los nombres";
   if (!body.apellidos) return "Faltan los apellidos";
   if (!body.placa) return "Falta la placa";

@@ -20,6 +20,7 @@ interface RegistroAdmin {
   fecha_nacimiento: string;
   correo_contacto: string;
   es_contacto_principal: boolean;
+  inmueble_arrendado?: string;
   es_titular_arriendo?: boolean;
   unidad?: string;
   eliminado?: boolean;
@@ -40,6 +41,31 @@ interface ParqueaderoAdmin {
   marca: string;
   modelo: string;
   tipo_vehiculo: string;
+  eliminado?: boolean;
+  created_at: string;
+}
+
+interface MascotaAdmin {
+  id: string;
+  correo: string;
+  unidad: string;
+  especie: string;
+  nombre: string;
+  raza: string;
+  edad: string;
+  tamano: string;
+  eliminado?: boolean;
+  created_at: string;
+}
+
+interface BicicletaAdmin {
+  id: string;
+  correo: string;
+  unidad: string;
+  color: string;
+  marca: string;
+  en_bicicletero: string;
+  numero_asignado?: string;
   eliminado?: boolean;
   created_at: string;
 }
@@ -72,7 +98,7 @@ export default function AdminPage() {
   const [key, setKey] = useState("");
   const [autenticado, setAutenticado] = useState(false);
   const [errorAuth, setErrorAuth] = useState("");
-  const [tab, setTab] = useState<"resultados" | "encuestas" | "registros" | "contactos" | "parqueaderos">("resultados");
+  const [tab, setTab] = useState<"resultados" | "encuestas" | "registros" | "contactos" | "parqueaderos" | "mascotas" | "bicicletas">("resultados");
 
   const [registrosTipo, setRegistrosTipo] = useState<"residentes" | "propietarios">("residentes");
   const [registros, setRegistros] = useState<RegistroAdmin[]>([]);
@@ -84,6 +110,16 @@ export default function AdminPage() {
   const [cargandoParqueaderos, setCargandoParqueaderos] = useState(false);
   const [verEliminadosParqueadero, setVerEliminadosParqueadero] = useState(false);
   const [filtroUnidadParqueadero, setFiltroUnidadParqueadero] = useState("");
+
+  const [mascotas, setMascotas] = useState<MascotaAdmin[]>([]);
+  const [cargandoMascotas, setCargandoMascotas] = useState(false);
+  const [verEliminadosMascota, setVerEliminadosMascota] = useState(false);
+  const [filtroUnidadMascota, setFiltroUnidadMascota] = useState("");
+
+  const [bicicletas, setBicicletas] = useState<BicicletaAdmin[]>([]);
+  const [cargandoBicicletas, setCargandoBicicletas] = useState(false);
+  const [verEliminadosBicicleta, setVerEliminadosBicicleta] = useState(false);
+  const [filtroUnidadBicicleta, setFiltroUnidadBicicleta] = useState("");
 
   const [datos, setDatos] = useState<EncuestaResult[]>([]);
   const [encSeleccionada, setEncSeleccionada] = useState("");
@@ -156,6 +192,32 @@ export default function AdminPage() {
     cargarParqueaderos(verEliminadosParqueadero);
   };
 
+  const cargarMascotas = useCallback(async (eliminados: boolean) => {
+    setCargandoMascotas(true);
+    const res = await fetch(`/api/admin/mascotas?key=${ADMIN_KEY}&eliminados=${eliminados}`);
+    const data = await res.json();
+    setMascotas(Array.isArray(data) ? data : []);
+    setCargandoMascotas(false);
+  }, []);
+
+  const restaurarMascota = async (id: string) => {
+    await fetch(`/api/admin/mascotas/${id}?key=${ADMIN_KEY}`, { method: "PUT" });
+    cargarMascotas(verEliminadosMascota);
+  };
+
+  const cargarBicicletas = useCallback(async (eliminados: boolean) => {
+    setCargandoBicicletas(true);
+    const res = await fetch(`/api/admin/bicicletas?key=${ADMIN_KEY}&eliminados=${eliminados}`);
+    const data = await res.json();
+    setBicicletas(Array.isArray(data) ? data : []);
+    setCargandoBicicletas(false);
+  }, []);
+
+  const restaurarBicicleta = async (id: string) => {
+    await fetch(`/api/admin/bicicletas/${id}?key=${ADMIN_KEY}`, { method: "PUT" });
+    cargarBicicletas(verEliminadosBicicleta);
+  };
+
   useEffect(() => {
     if (autenticado) { cargarResultados(); cargarEncuestas(); }
   }, [autenticado]);
@@ -170,6 +232,16 @@ export default function AdminPage() {
     setFiltroUnidadParqueadero("");
     if (autenticado && tab === "parqueaderos") cargarParqueaderos(verEliminadosParqueadero);
   }, [autenticado, tab, verEliminadosParqueadero, cargarParqueaderos]);
+
+  useEffect(() => {
+    setFiltroUnidadMascota("");
+    if (autenticado && tab === "mascotas") cargarMascotas(verEliminadosMascota);
+  }, [autenticado, tab, verEliminadosMascota, cargarMascotas]);
+
+  useEffect(() => {
+    setFiltroUnidadBicicleta("");
+    if (autenticado && tab === "bicicletas") cargarBicicletas(verEliminadosBicicleta);
+  }, [autenticado, tab, verEliminadosBicicleta, cargarBicicletas]);
 
   useEffect(() => {
     if (encSeleccionada) cargarFaltan(encSeleccionada);
@@ -335,6 +407,49 @@ export default function AdminPage() {
     XLSX.writeFile(wb, `parqueaderos_${verEliminadosParqueadero ? "eliminados_" : ""}${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  const unidadesDisponiblesMascota = Array.from(new Set(mascotas.map(m => m.unidad).filter((u): u is string => !!u)))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const mascotasFiltradas = filtroUnidadMascota ? mascotas.filter(m => m.unidad === filtroUnidadMascota) : mascotas;
+
+  const exportarMascotasXLSX = () => {
+    const filas = mascotasFiltradas.map((m, i) => ({
+      "#": i + 1,
+      Unidad: m.unidad ? formatUnidad(m.unidad) : "",
+      Especie: m.especie,
+      Nombre: m.nombre,
+      Raza: m.raza,
+      Edad: m.edad,
+      Tamaño: m.tamano,
+      "Correo cuenta": m.correo,
+      "Fecha registro": new Date(m.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
+    }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Mascotas");
+    XLSX.writeFile(wb, `mascotas_${verEliminadosMascota ? "eliminados_" : ""}${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const unidadesDisponiblesBicicleta = Array.from(new Set(bicicletas.map(b => b.unidad).filter((u): u is string => !!u)))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const bicicletasFiltradas = filtroUnidadBicicleta ? bicicletas.filter(b => b.unidad === filtroUnidadBicicleta) : bicicletas;
+
+  const exportarBicicletasXLSX = () => {
+    const filas = bicicletasFiltradas.map((b, i) => ({
+      "#": i + 1,
+      Unidad: b.unidad ? formatUnidad(b.unidad) : "",
+      Color: b.color,
+      Marca: b.marca,
+      "En bicicletero": b.en_bicicletero,
+      "N° Asignado": b.numero_asignado || "",
+      "Correo cuenta": b.correo,
+      "Fecha registro": new Date(b.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
+    }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bicicletas");
+    XLSX.writeFile(wb, `bicicletas_${verEliminadosBicicleta ? "eliminados_" : ""}${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const exportarContactosXLSX = () => {
     const filas = titulares.map((r, i) => ({
       "#": i + 1,
@@ -367,7 +482,7 @@ export default function AdminPage() {
       Edad: calcularEdad(r.fecha_nacimiento),
       "Correo contacto": r.correo_contacto || "",
       "Contacto principal": r.es_contacto_principal ? "Sí" : "No",
-      ...(registrosTipo === "residentes" ? { "Titular del Arriendo": r.es_titular_arriendo ? "Sí" : "No" } : {}),
+      ...(registrosTipo === "residentes" ? { "Inmueble arrendado": r.inmueble_arrendado || "No", "Titular del Arriendo": r.es_titular_arriendo ? "Sí" : "No" } : {}),
       "N° Matrícula": r.numero_matricula || "",
       ...(registrosTipo === "propietarios" ? { Dirección: r.direccion || "", Ciudad: r.ciudad || "" } : {}),
       "Correo cuenta": r.correo,
@@ -415,7 +530,7 @@ export default function AdminPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {([["resultados", "Resultados"], ["encuestas", "Encuestas"], ["registros", "Registros"], ["contactos", "Contactos"], ["parqueaderos", "Parqueaderos"]] as const).map(([t, label]) => (
+          {([["resultados", "Resultados"], ["encuestas", "Encuestas"], ["registros", "Registros"], ["contactos", "Contactos"], ["parqueaderos", "Parqueaderos"], ["mascotas", "Mascotas"], ["bicicletas", "Bicicletas"]] as const).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
                 background: tab === t ? VERDE : "#fff", color: tab === t ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
@@ -745,7 +860,7 @@ export default function AdminPage() {
                     <tr style={{ background: "#f9f9f9" }}>
                       {[
                         "#", "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
-                        ...(registrosTipo === "residentes" ? ["Arriendo"] : []),
+                        ...(registrosTipo === "residentes" ? ["Inmueble arrendado", "Titular Arriendo"] : []),
                         "Matrícula", ...(registrosTipo === "propietarios" ? ["Dirección", "Ciudad"] : []),
                         "Fecha registro",
                         ...(verEliminados ? [""] : []),
@@ -767,7 +882,10 @@ export default function AdminPage() {
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.correo_contacto || "—"}</td>
                         <td style={{ padding: "8px 10px", color: r.es_contacto_principal ? NARANJA : "#111", fontWeight: r.es_contacto_principal ? 700 : 400 }}>{r.es_contacto_principal ? "Principal" : "—"}</td>
                         {registrosTipo === "residentes" && (
-                          <td style={{ padding: "8px 10px", color: r.es_titular_arriendo ? NARANJA : "#111", fontWeight: r.es_titular_arriendo ? 700 : 400 }}>{r.es_titular_arriendo ? "Sí" : "—"}</td>
+                          <>
+                            <td style={{ padding: "8px 10px", color: "#111" }}>{r.inmueble_arrendado || "—"}</td>
+                            <td style={{ padding: "8px 10px", color: r.es_titular_arriendo ? NARANJA : "#111", fontWeight: r.es_titular_arriendo ? 700 : 400 }}>{r.es_titular_arriendo ? "Sí" : "—"}</td>
+                          </>
                         )}
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.numero_matricula || "—"}</td>
                         {registrosTipo === "propietarios" && (
@@ -925,6 +1043,157 @@ export default function AdminPage() {
                         {verEliminadosParqueadero && (
                           <td style={{ padding: "8px 10px" }}>
                             <button onClick={() => restaurarParqueadero(p.id)}
+                              style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              Restaurar
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "mascotas" && (
+          <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+              <h3 style={{ fontWeight: 700, color: "#111", margin: 0, fontSize: 15 }}>
+                Mascotas {verEliminadosMascota ? "eliminadas" : "registradas"} ({mascotasFiltradas.length})
+              </h3>
+              <button onClick={exportarMascotasXLSX} disabled={mascotasFiltradas.length === 0}
+                style={{ background: mascotasFiltradas.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: mascotasFiltradas.length === 0 ? "not-allowed" : "pointer" }}>
+                Exportar Excel
+              </button>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([[false, "Activos"], [true, "Histórico (eliminados)"]] as const).map(([v, label]) => (
+                  <button key={String(v)} onClick={() => setVerEliminadosMascota(v)}
+                    style={{ padding: "6px 14px", borderRadius: 20, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer",
+                      background: verEliminadosMascota === v ? NARANJA : "#f0f0f0", color: verEliminadosMascota === v ? "#fff" : "#555" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Unidad:</label>
+                <select value={filtroUnidadMascota} onChange={e => setFiltroUnidadMascota(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: "2px solid #ddd", fontSize: 12, color: "#111" }}>
+                  <option value="">Todas</option>
+                  {unidadesDisponiblesMascota.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {cargandoMascotas ? (
+              <p style={{ color: "#111", fontSize: 13 }}>Cargando...</p>
+            ) : mascotasFiltradas.length === 0 ? (
+              <p style={{ color: "#111", fontSize: 13 }}>
+                {verEliminadosMascota ? "No hay registros eliminados." : "Aún no hay mascotas registradas."}
+              </p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f9f9f9" }}>
+                      {["#", "Unidad", "Especie", "Nombre", "Raza", "Edad", "Tamaño", "Fecha registro", ...(verEliminadosMascota ? [""] : [])].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mascotasFiltradas.map((m, i) => (
+                      <tr key={m.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{m.unidad ? formatUnidad(m.unidad) : "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{m.especie}</td>
+                        <td style={{ padding: "8px 10px", color: "#111", fontWeight: 700 }}>{m.nombre}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{m.raza}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{m.edad}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{m.tamano}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(m.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                        {verEliminadosMascota && (
+                          <td style={{ padding: "8px 10px" }}>
+                            <button onClick={() => restaurarMascota(m.id)}
+                              style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              Restaurar
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "bicicletas" && (
+          <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+              <h3 style={{ fontWeight: 700, color: "#111", margin: 0, fontSize: 15 }}>
+                Bicicletas {verEliminadosBicicleta ? "eliminadas" : "registradas"} ({bicicletasFiltradas.length})
+              </h3>
+              <button onClick={exportarBicicletasXLSX} disabled={bicicletasFiltradas.length === 0}
+                style={{ background: bicicletasFiltradas.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: bicicletasFiltradas.length === 0 ? "not-allowed" : "pointer" }}>
+                Exportar Excel
+              </button>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([[false, "Activos"], [true, "Histórico (eliminados)"]] as const).map(([v, label]) => (
+                  <button key={String(v)} onClick={() => setVerEliminadosBicicleta(v)}
+                    style={{ padding: "6px 14px", borderRadius: 20, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer",
+                      background: verEliminadosBicicleta === v ? NARANJA : "#f0f0f0", color: verEliminadosBicicleta === v ? "#fff" : "#555" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Unidad:</label>
+                <select value={filtroUnidadBicicleta} onChange={e => setFiltroUnidadBicicleta(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: "2px solid #ddd", fontSize: 12, color: "#111" }}>
+                  <option value="">Todas</option>
+                  {unidadesDisponiblesBicicleta.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {cargandoBicicletas ? (
+              <p style={{ color: "#111", fontSize: 13 }}>Cargando...</p>
+            ) : bicicletasFiltradas.length === 0 ? (
+              <p style={{ color: "#111", fontSize: 13 }}>
+                {verEliminadosBicicleta ? "No hay registros eliminados." : "Aún no hay bicicletas registradas."}
+              </p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f9f9f9" }}>
+                      {["#", "Unidad", "Color", "Marca", "En bicicletero", "N° Asignado", "Fecha registro", ...(verEliminadosBicicleta ? [""] : [])].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bicicletasFiltradas.map((b, i) => (
+                      <tr key={b.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{b.unidad ? formatUnidad(b.unidad) : "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{b.color}</td>
+                        <td style={{ padding: "8px 10px", color: "#111", fontWeight: 700 }}>{b.marca}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{b.en_bicicletero}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{b.numero_asignado || "—"}</td>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(b.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                        {verEliminadosBicicleta && (
+                          <td style={{ padding: "8px 10px" }}>
+                            <button onClick={() => restaurarBicicleta(b.id)}
                               style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                               Restaurar
                             </button>

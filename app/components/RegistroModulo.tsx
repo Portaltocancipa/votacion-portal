@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { calcularEdad, TIPOS_DOCUMENTO, TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
 import { formatUnidad } from "@/lib/unidad";
+import PreregistroNota from "./PreregistroNota";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
@@ -17,6 +18,7 @@ interface Registro {
   fecha_nacimiento: string;
   correo_contacto: string;
   es_contacto_principal: boolean;
+  inmueble_arrendado?: string;
   es_titular_arriendo?: boolean;
   unidad: string;
   numero_matricula?: string;
@@ -38,11 +40,13 @@ const FORM_INIT = {
   telefono: "", fecha_nacimiento: "", correo_contacto: "",
   numero_matricula: "", direccion: "", ciudad: "",
   es_contacto_principal: false,
+  inmueble_arrendado: "",
   es_titular_arriendo: false,
 };
 
 const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula"];
 const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["direccion", "ciudad"];
+const CAMPOS_REQUERIDOS_RESIDENTES: (keyof typeof FORM_INIT)[] = ["inmueble_arrendado"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
@@ -93,6 +97,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       fecha_nacimiento: r.fecha_nacimiento, correo_contacto: r.correo_contacto || "",
       numero_matricula: (r.numero_matricula || "").toUpperCase(), direccion: (r.direccion || "").toUpperCase(), ciudad: (r.ciudad || "").toUpperCase(),
       es_contacto_principal: !!r.es_contacto_principal,
+      inmueble_arrendado: r.inmueble_arrendado || "",
       es_titular_arriendo: !!r.es_titular_arriendo,
     });
     setEditandoId(r.id);
@@ -133,17 +138,18 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
     const requeridos = [
       ...CAMPOS_REQUERIDOS_COMUNES,
       ...(necesitaCorreo ? (["correo_contacto"] as (keyof typeof FORM_INIT)[]) : []),
-      ...(esPropietarios ? CAMPOS_REQUERIDOS_PROPIETARIOS : []),
+      ...(esPropietarios ? CAMPOS_REQUERIDOS_PROPIETARIOS : CAMPOS_REQUERIDOS_RESIDENTES),
     ];
     const faltante = requeridos.find(k => !form[k]);
     if (faltante) { setError("Completa todos los campos obligatorios"); return; }
 
     setGuardando(true); setError("");
+    const payload = { ...form, es_titular_arriendo: form.inmueble_arrendado === "Sí" && form.es_titular_arriendo };
     const url = editandoId ? `/api/${tipo}/${editandoId}` : `/api/${tipo}`;
     const res = await fetch(url, {
       method: editandoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, correo }),
+      body: JSON.stringify({ ...payload, correo }),
     });
     const data = await res.json();
     if (data.id) {
@@ -164,9 +170,11 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       </button>
 
       <h2 style={{ fontSize: 18, fontWeight: 800, color: VERDE, marginBottom: 4 }}>{titulo}</h2>
-      <p style={{ fontSize: 13, color: "#111", marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: "#111", marginBottom: 12 }}>
         Registra y mantén actualizada la información de {tipo === "residentes" ? "las personas que residen en tu unidad" : "los propietarios de tu unidad"}.
       </p>
+
+      <PreregistroNota/>
 
       {cargando ? (
         <p style={{ fontSize: 13, color: "#111" }}>Cargando...</p>
@@ -315,11 +323,27 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
             <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Es el titular para contacto</span>
           </label>
 
-          {!esPropietarios && necesitaCorreo && (
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 14 }}>
-              <input type="checkbox" checked={form.es_titular_arriendo} onChange={e => setForm(f => ({ ...f, es_titular_arriendo: e.target.checked }))}/>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Titular del Arriendo</span>
-            </label>
+          {!esPropietarios && (
+            <>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>¿Inmueble arrendado?</label>
+                <select value={form.inmueble_arrendado} onChange={e => {
+                  const val = e.target.value;
+                  setForm(f => ({ ...f, inmueble_arrendado: val, es_titular_arriendo: val === "Sí" ? f.es_titular_arriendo : false }));
+                }} style={inputStyle}>
+                  <option value="">Selecciona...</option>
+                  <option value="Sí">Sí</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+
+              {form.inmueble_arrendado === "Sí" && necesitaCorreo && (
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 14 }}>
+                  <input type="checkbox" checked={form.es_titular_arriendo} onChange={e => setForm(f => ({ ...f, es_titular_arriendo: e.target.checked }))}/>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Titular del Arriendo</span>
+                </label>
+              )}
+            </>
           )}
 
           {!editandoId && (

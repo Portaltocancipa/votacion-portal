@@ -1,52 +1,41 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { formatUnidad } from "@/lib/unidad";
-import PreregistroNota from "./PreregistroNota";
+import { ESPECIES_MASCOTA, TAMANOS_MASCOTA } from "@/lib/mascotas";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const VERDE_LIGHT = "#2E7D32";
 
-interface Parqueadero {
+interface Mascota {
   id: string;
   unidad: string;
-  numero_parqueadero: string;
-  nombres: string;
-  apellidos: string;
-  placa: string;
-  marca: string;
-  modelo: string;
-  tipo_vehiculo: string;
+  especie: string;
+  nombre: string;
+  raza: string;
+  edad: string;
+  tamano: string;
 }
 
 interface Props {
   correo: string;
   unidades: string[];
   token: string;
-  onVolver: () => void;
 }
 
-const TIPOS_VEHICULO = ["Carro", "Moto"];
-const MAX_PARQUEADEROS = 4;
-
-const FORM_INIT = {
-  unidad: "", numero_parqueadero: "", nombres: "", apellidos: "",
-  placa: "", marca: "", modelo: "", tipo_vehiculo: "",
-};
-
-const CAMPOS_REQUERIDOS: (keyof typeof FORM_INIT)[] = ["unidad", "numero_parqueadero", "nombres", "apellidos", "placa", "marca", "modelo", "tipo_vehiculo"];
+const FORM_INIT = { unidad: "", especie: "", nombre: "", raza: "", edad: "", tamano: "" };
+const CAMPOS_REQUERIDOS: (keyof typeof FORM_INIT)[] = ["unidad", "especie", "nombre", "raza", "edad", "tamano"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
 
-export default function ParqueaderoModulo({ correo, unidades, token, onVolver }: Props) {
-  const [registros, setRegistros] = useState<Parqueadero[]>([]);
+export default function MascotasModulo({ correo, unidades, token }: Props) {
+  const [registros, setRegistros] = useState<Mascota[]>([]);
   const [cargando, setCargando] = useState(true);
   const [verTodos, setVerTodos] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_INIT);
-  const [aceptaTratamiento, setAceptaTratamiento] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [borrandoId, setBorrandoId] = useState<string | null>(null);
   const [confirmarBorrarId, setConfirmarBorrarId] = useState<string | null>(null);
@@ -58,7 +47,7 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
   const cargar = useCallback(async () => {
     setCargando(true); setErrorCarga("");
     try {
-      const res = await fetch(`/api/parqueaderos?correo=${encodeURIComponent(correo)}`);
+      const res = await fetch(`/api/mascotas?correo=${encodeURIComponent(correo)}`);
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error(data?.error || "No se pudo cargar la información");
       setRegistros(data);
@@ -71,19 +60,15 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
   useEffect(() => { cargar(); }, [cargar]);
 
   const cancelarForm = () => {
-    setMostrarForm(false); setEditandoId(null); setForm(FORM_INIT); setAceptaTratamiento(false); setError("");
+    setMostrarForm(false); setEditandoId(null); setForm(FORM_INIT); setError("");
   };
 
-  const iniciarEdicion = (r: Parqueadero) => {
+  const iniciarEdicion = (r: Mascota) => {
     setForm({
-      unidad: r.unidad || "",
-      numero_parqueadero: r.numero_parqueadero.toUpperCase(),
-      nombres: r.nombres.toUpperCase(), apellidos: r.apellidos.toUpperCase(),
-      placa: r.placa.toUpperCase(), marca: r.marca.toUpperCase(), modelo: r.modelo.toUpperCase(),
-      tipo_vehiculo: r.tipo_vehiculo,
+      unidad: r.unidad || "", especie: r.especie, nombre: r.nombre.toUpperCase(),
+      raza: r.raza.toUpperCase(), edad: r.edad, tamano: r.tamano,
     });
     setEditandoId(r.id);
-    setAceptaTratamiento(true);
     setError("");
     setMostrarForm(true);
   };
@@ -103,7 +88,7 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
       return;
     }
     setBorrandoId(confirmarBorrarId);
-    await fetch(`/api/parqueaderos/${confirmarBorrarId}`, {
+    await fetch(`/api/mascotas/${confirmarBorrarId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ correo }),
@@ -114,12 +99,11 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
   };
 
   const guardar = async () => {
-    if (!editandoId && !aceptaTratamiento) { setError("Debes aceptar el tratamiento de datos personales para continuar"); return; }
     const faltante = CAMPOS_REQUERIDOS.find(k => !form[k]);
     if (faltante) { setError("Completa todos los campos obligatorios"); return; }
 
     setGuardando(true); setError("");
-    const url = editandoId ? `/api/parqueaderos/${editandoId}` : "/api/parqueaderos";
+    const url = editandoId ? `/api/mascotas/${editandoId}` : "/api/mascotas";
     const res = await fetch(url, {
       method: editandoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -138,17 +122,9 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
   const visibles = verTodos ? registros : registros.slice(0, 3);
 
   return (
-    <>
-      <button onClick={onVolver} style={{ background: "none", border: "none", color: VERDE, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 16 }}>
-        Volver al menú
-      </button>
-
-      <h2 style={{ fontSize: 18, fontWeight: 800, color: VERDE, marginBottom: 4 }}>Parqueadero</h2>
-      <p style={{ fontSize: 13, color: "#111", marginBottom: 12 }}>
-        Registra y mantén actualizados los vehículos de tu unidad.
-      </p>
-
-      <PreregistroNota/>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 18, marginTop: 16 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 800, color: VERDE, margin: "0 0 4px" }}>Mascotas</h3>
+      <p style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>Registra las mascotas que viven en tu unidad.</p>
 
       {cargando ? (
         <p style={{ fontSize: 13, color: "#111" }}>Cargando...</p>
@@ -160,21 +136,17 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
           </button>
         </div>
       ) : registros.length === 0 ? (
-        <p style={{ fontSize: 13, color: "#111", marginBottom: 16 }}>Aún no has registrado ningún vehículo.</p>
+        <p style={{ fontSize: 13, color: "#111", marginBottom: 16 }}>Aún no has registrado ninguna mascota.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
           {visibles.map(r => (
             <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>
-                  {r.placa} — {r.marca} {r.modelo} ({r.tipo_vehiculo})
-                </p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#111", margin: 0 }}>{r.nombre} — {r.especie}</p>
                 <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
-                  Parqueadero {r.numero_parqueadero} · {formatUnidad(r.unidad)}
+                  {r.raza} · {r.edad} · Tamaño {r.tamano}
                 </p>
-                <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                  {r.nombres} {r.apellidos}
-                </p>
+                {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{formatUnidad(r.unidad)}</p>}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                 <button onClick={() => iniciarEdicion(r)}
@@ -197,24 +169,12 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
       )}
 
       {!mostrarForm ? (
-        registros.length >= MAX_PARQUEADEROS ? (
-          <p style={{ fontSize: 13, color: "#555", textAlign: "center" }}>
-            Ya alcanzaste el máximo de {MAX_PARQUEADEROS} vehículos registrados.
-          </p>
-        ) : (
-          <button onClick={() => setMostrarForm(true)}
-            style={{ width: "100%", background: VERDE, color: "#fff", border: "none", borderRadius: 10, padding: 13, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
-            + Registrar un vehículo
-          </button>
-        )
+        <button onClick={() => setMostrarForm(true)}
+          style={{ width: "100%", background: VERDE, color: "#fff", border: "none", borderRadius: 10, padding: 13, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+          + Añadir mascota
+        </button>
       ) : (
         <div style={{ border: `2px solid ${VERDE_LIGHT}`, borderRadius: 12, padding: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, color: VERDE, margin: 0 }}>
-              {editandoId ? "Editar vehículo" : "Nuevo vehículo"}
-            </h3>
-          </div>
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
               <label style={labelStyle}>Unidad</label>
@@ -224,60 +184,38 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Número de parqueadero</label>
-              <input value={form.numero_parqueadero} onChange={e => setForm(f => ({ ...f, numero_parqueadero: e.target.value.replace(/\D/g, "") }))} style={inputStyle} inputMode="numeric"/>
+              <label style={labelStyle}>Especie</label>
+              <select value={form.especie} onChange={e => setForm(f => ({ ...f, especie: e.target.value }))} style={inputStyle}>
+                <option value="">Selecciona...</option>
+                {ESPECIES_MASCOTA.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
-              <label style={labelStyle}>Nombres</label>
-              <input value={form.nombres} onChange={e => setForm(f => ({ ...f, nombres: e.target.value.toUpperCase() }))} style={inputStyle}/>
+              <label style={labelStyle}>Nombre</label>
+              <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value.toUpperCase() }))} style={inputStyle}/>
             </div>
             <div>
-              <label style={labelStyle}>Apellidos</label>
-              <input value={form.apellidos} onChange={e => setForm(f => ({ ...f, apellidos: e.target.value.toUpperCase() }))} style={inputStyle}/>
+              <label style={labelStyle}>Raza</label>
+              <input value={form.raza} onChange={e => setForm(f => ({ ...f, raza: e.target.value.toUpperCase() }))} style={inputStyle}/>
             </div>
           </div>
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Tipo de vehículo</label>
-            <select value={form.tipo_vehiculo} onChange={e => setForm(f => ({ ...f, tipo_vehiculo: e.target.value }))} style={inputStyle}>
-              <option value="">Selecciona...</option>
-              {TIPOS_VEHICULO.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
-              <label style={labelStyle}>Placa</label>
-              <input value={form.placa} onChange={e => setForm(f => ({ ...f, placa: e.target.value.toUpperCase() }))} style={inputStyle}/>
+              <label style={labelStyle}>Edad</label>
+              <input value={form.edad} onChange={e => setForm(f => ({ ...f, edad: e.target.value }))} style={inputStyle} placeholder="Ej: 2 años"/>
             </div>
             <div>
-              <label style={labelStyle}>Marca</label>
-              <input value={form.marca} onChange={e => setForm(f => ({ ...f, marca: e.target.value.toUpperCase() }))} style={inputStyle}/>
-            </div>
-            <div>
-              <label style={labelStyle}>Modelo</label>
-              <input value={form.modelo} onChange={e => setForm(f => ({ ...f, modelo: e.target.value.toUpperCase() }))} style={inputStyle}/>
+              <label style={labelStyle}>Tamaño</label>
+              <select value={form.tamano} onChange={e => setForm(f => ({ ...f, tamano: e.target.value }))} style={inputStyle}>
+                <option value="">Selecciona...</option>
+                {TAMANOS_MASCOTA.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
             </div>
           </div>
-
-          {!editandoId && (
-            <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-              <p style={{ fontSize: 11, color: "#555", lineHeight: 1.6, margin: "0 0 10px" }}>
-                Al registrar esta información usted autoriza a la Agrupación El Portal de Tocancipá para el tratamiento
-                de los datos personales aquí suministrados, conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013,
-                con la finalidad exclusiva de actualizar la base de datos de vehículos y parqueaderos de la
-                copropiedad. Estos datos no serán compartidos con terceros distintos a la administración, salvo
-                requerimiento de autoridad competente.
-              </p>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                <input type="checkbox" checked={aceptaTratamiento} onChange={e => setAceptaTratamiento(e.target.checked)}/>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Acepto el tratamiento de mis datos personales</span>
-              </label>
-            </div>
-          )}
 
           {error && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
@@ -324,6 +262,6 @@ export default function ParqueaderoModulo({ correo, unidades, token, onVolver }:
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
