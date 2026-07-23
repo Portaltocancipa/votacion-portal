@@ -99,6 +99,12 @@ export async function borrarRegistro(tabla: TablaRegistro, id: string, correo: s
   if (error) throw new Error(error.message);
 }
 
+export async function restaurarRegistro(tabla: TablaRegistro, id: string) {
+  const supabase = getSupabase();
+  const { error } = await supabase.from(tabla).update({ eliminado: false }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function listarTodos(tabla: TablaRegistro, eliminados = false) {
   const supabase = getSupabase();
   const { data, error } = await supabase

@@ -113,6 +113,15 @@ export default function AdminPage() {
     setCargandoRegistros(false);
   }, []);
 
+  const restaurarRegistro = async (id: string) => {
+    await fetch(`/api/admin/registros/${id}?key=${ADMIN_KEY}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tabla: registrosTipo }),
+    });
+    cargarRegistros(registrosTipo, verEliminados);
+  };
+
   useEffect(() => {
     if (autenticado) { cargarResultados(); cargarEncuestas(); }
   }, [autenticado]);
@@ -655,6 +664,7 @@ export default function AdminPage() {
                         "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
                         ...(registrosTipo === "propietarios" ? ["Matrícula", "Dirección", "Ciudad"] : []),
                         "Fecha registro",
+                        ...(verEliminados ? [""] : []),
                       ].map(h => (
                         <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#111", fontWeight: 700, borderBottom: "2px solid #e5e5e5" }}>{h}</th>
                       ))}
@@ -679,6 +689,14 @@ export default function AdminPage() {
                           </>
                         )}
                         <td style={{ padding: "8px 10px", color: "#111" }}>{new Date(r.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</td>
+                        {verEliminados && (
+                          <td style={{ padding: "8px 10px" }}>
+                            <button onClick={() => restaurarRegistro(r.id)}
+                              style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              ↺ Restaurar
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
