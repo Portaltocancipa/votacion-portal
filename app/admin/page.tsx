@@ -258,7 +258,7 @@ export default function AdminPage() {
       const expandidas = detalles.flatMap(d => Array.from({ length: d.cantidad || 1 }, () => ({ unidad: d.unidad, nombre: d.nombre })));
       const fecha = new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" });
       expandidas.forEach(f => {
-        filas.push({ Nombre: f.nombre, Unidad: f.unidad, "Opción": (v.opciones_elegidas ?? []).join(", "), Fecha: fecha });
+        filas.push({ "#": filas.length + 1, Nombre: f.nombre, Unidad: f.unidad, "Opción": (v.opciones_elegidas ?? []).join(", "), Fecha: fecha });
       });
     });
     const ws = XLSX.utils.json_to_sheet(filas);
@@ -270,9 +270,34 @@ export default function AdminPage() {
   const unidadesDisponibles = Array.from(new Set(registros.map(r => r.unidad).filter((u): u is string => !!u)))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   const registrosFiltrados = filtroUnidad ? registros.filter(r => r.unidad === filtroUnidad) : registros;
+  const titulares = registros.filter(r => r.es_contacto_principal);
+
+  const exportarContactosXLSX = () => {
+    const filas = titulares.map((r, i) => ({
+      "#": i + 1,
+      Unidad: r.unidad ? formatUnidad(r.unidad) : "",
+      Nombres: r.nombres,
+      Apellidos: r.apellidos,
+      "Tipo Documento": r.tipo_documento,
+      "N° Documento": r.numero_documento,
+      Teléfono: r.telefono || "",
+      "Correo contacto": r.correo_contacto || "",
+      ...(registrosTipo === "propietarios" ? {
+        "N° Matrícula": r.numero_matricula || "",
+        Dirección: r.direccion || "",
+        Ciudad: r.ciudad || "",
+      } : {}),
+      "Correo cuenta": r.correo,
+    }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Contactos");
+    XLSX.writeFile(wb, `contactos_${registrosTipo}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const exportarRegistrosXLSX = () => {
-    const filas = registrosFiltrados.map(r => ({
+    const filas = registrosFiltrados.map((r, i) => ({
+      "#": i + 1,
       Unidad: r.unidad ? formatUnidad(r.unidad) : "",
       Nombres: r.nombres,
       Apellidos: r.apellidos,
@@ -661,7 +686,7 @@ export default function AdminPage() {
                   <thead>
                     <tr style={{ background: "#f9f9f9" }}>
                       {[
-                        "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
+                        "#", "Unidad", "Nombres", "Apellidos", "Documento", "Teléfono", "Edad", "Correo contacto", "Contacto",
                         ...(registrosTipo === "propietarios" ? ["Matrícula", "Dirección", "Ciudad"] : []),
                         "Fecha registro",
                         ...(verEliminados ? [""] : []),
@@ -671,8 +696,9 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {registrosFiltrados.map(r => (
+                    {registrosFiltrados.map((r, i) => (
                       <tr key={r.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                        <td style={{ padding: "8px 10px", color: "#111" }}>{i + 1}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.unidad ? formatUnidad(r.unidad) : "—"}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.nombres}</td>
                         <td style={{ padding: "8px 10px", color: "#111" }}>{r.apellidos}</td>
@@ -708,14 +734,20 @@ export default function AdminPage() {
 
         {tab === "contactos" && (
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1px solid #e5e5e5" }}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-              {([["residentes", "Residentes"], ["propietarios", "Propietarios"]] as const).map(([t, label]) => (
-                <button key={t} onClick={() => setRegistrosTipo(t)}
-                  style={{ padding: "8px 18px", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
-                    background: registrosTipo === t ? VERDE : "#f0f0f0", color: registrosTipo === t ? "#fff" : "#555" }}>
-                  {label}
-                </button>
-              ))}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([["residentes", "Residentes"], ["propietarios", "Propietarios"]] as const).map(([t, label]) => (
+                  <button key={t} onClick={() => setRegistrosTipo(t)}
+                    style={{ padding: "8px 18px", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      background: registrosTipo === t ? VERDE : "#f0f0f0", color: registrosTipo === t ? "#fff" : "#555" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={exportarContactosXLSX} disabled={titulares.length === 0}
+                style={{ background: titulares.length === 0 ? "#9e9e9e" : "#217346", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: titulares.length === 0 ? "not-allowed" : "pointer" }}>
+                ⬇ Exportar Excel
+              </button>
             </div>
 
             <h3 style={{ fontWeight: 700, color: "#111", marginBottom: 16, fontSize: 15 }}>
@@ -724,35 +756,29 @@ export default function AdminPage() {
 
             {cargandoRegistros ? (
               <p style={{ color: "#111", fontSize: 13 }}>Cargando...</p>
+            ) : titulares.length === 0 ? (
+              <p style={{ color: "#111", fontSize: 13 }}>Aún no hay titular de comunicaciones seleccionado para {registrosTipo}.</p>
             ) : (
-              (() => {
-                const titulares = registros.filter(r => r.es_contacto_principal);
-                if (titulares.length === 0) {
-                  return <p style={{ color: "#111", fontSize: 13 }}>Aún no hay titular de comunicaciones seleccionado para {registrosTipo}.</p>;
-                }
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {titulares.map(r => (
-                      <div key={r.id} style={{ border: `2px solid ${NARANJA}40`, background: "#fff8f0", borderRadius: 10, padding: "14px 16px" }}>
-                        <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: 0 }}>★ {r.nombres} {r.apellidos}</p>
-                        {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>{formatUnidad(r.unidad)}</p>}
-                        <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                          {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años
-                        </p>
-                        <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                          📞 {r.telefono || "—"} · ✉️ {r.correo_contacto || "—"}
-                        </p>
-                        {registrosTipo === "propietarios" && (r.direccion || r.ciudad || r.numero_matricula) && (
-                          <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                            {[r.direccion, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
-                          </p>
-                        )}
-                        <p style={{ fontSize: 11, color: "#999", margin: "4px 0 0" }}>Cuenta: {r.correo}</p>
-                      </div>
-                    ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {titulares.map((r, i) => (
+                  <div key={r.id} style={{ border: `2px solid ${NARANJA}40`, background: "#fff8f0", borderRadius: 10, padding: "14px 16px" }}>
+                    <p style={{ fontSize: 14, fontWeight: 800, color: "#111", margin: 0 }}>{i + 1}. ★ {r.nombres} {r.apellidos}</p>
+                    {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>{formatUnidad(r.unidad)}</p>}
+                    <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
+                      {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años
+                    </p>
+                    <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
+                      📞 {r.telefono || "—"} · ✉️ {r.correo_contacto || "—"}
+                    </p>
+                    {registrosTipo === "propietarios" && (r.direccion || r.ciudad || r.numero_matricula) && (
+                      <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
+                        {[r.direccion, r.ciudad, r.numero_matricula && `Matrícula ${r.numero_matricula}`].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    <p style={{ fontSize: 11, color: "#999", margin: "4px 0 0" }}>Cuenta: {r.correo}</p>
                   </div>
-                );
-              })()
+                ))}
+              </div>
             )}
           </div>
         )}

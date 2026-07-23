@@ -169,7 +169,7 @@ export default function Home() {
           </h1>
           <div style={{ marginTop: 14, background: NARANJA, display: "inline-block", borderRadius: 8, padding: "7px 18px" }}>
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>
-              Votaciones, residentes y propietarios de la copropiedad
+              Votaciones, Actualización y novedad de datos residentes y propietarios de la copropiedad
             </span>
           </div>
         </div>
