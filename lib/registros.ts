@@ -21,6 +21,31 @@ export interface RegistroInput {
   unidad?: string;
 }
 
+// Columnas reales de cada tabla en Supabase (ver supabase_registros.sql).
+// direccion es exclusiva de propietarios; inmueble_arrendado/es_titular_arriendo
+// son exclusivas de residentes. El formulario compartido (RegistroModulo.tsx)
+// puede enviar ambos conjuntos de campos sin importar el tipo, así que hay que
+// filtrar aquí antes de tocar la base o Postgres rechaza el insert/update con
+// "could not find the column ... in the schema cache".
+const CAMPOS_COMUNES = [
+  "correo", "tipo_documento", "numero_documento", "nombres", "apellidos",
+  "telefono", "fecha_nacimiento", "numero_matricula", "ciudad",
+  "correo_contacto", "es_contacto_principal", "unidad",
+] as const;
+const CAMPOS_POR_TABLA: Record<TablaRegistro, readonly string[]> = {
+  residentes: [...CAMPOS_COMUNES, "inmueble_arrendado", "es_titular_arriendo"],
+  propietarios: [...CAMPOS_COMUNES, "direccion"],
+};
+
+function filtrarCampos<T extends Partial<RegistroInput>>(tabla: TablaRegistro, input: T): T {
+  const permitidos = CAMPOS_POR_TABLA[tabla];
+  const resultado = {} as T;
+  for (const campo of permitidos) {
+    if (campo in input) (resultado as Record<string, unknown>)[campo] = (input as Record<string, unknown>)[campo];
+  }
+  return resultado;
+}
+
 export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInput>): string | null {
   if (!body.correo) return "Falta el correo";
   if (!body.unidad) return "Selecciona la unidad";
@@ -73,13 +98,13 @@ export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput) 
   if (input.es_contacto_principal) {
     await verificarFlagUnico(tabla, "es_contacto_principal", input.correo, "Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.");
   }
-  if (input.es_titular_arriendo) {
+  if (tabla === "residentes" && input.es_titular_arriendo) {
     await verificarFlagUnico(tabla, "es_titular_arriendo", input.correo, "Ya hay un titular del arriendo seleccionado. Desmárcalo antes de elegir otro.");
   }
 
   const { data, error } = await supabase
     .from(tabla)
-    .insert({ ...input, correo: input.correo.toLowerCase() })
+    .insert(filtrarCampos(tabla, { ...input, correo: input.correo.toLowerCase() }))
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -96,12 +121,13 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
   if (input.es_contacto_principal) {
     await verificarFlagUnico(tabla, "es_contacto_principal", correo, "Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.", id);
   }
-  if (input.es_titular_arriendo) {
+  if (tabla === "residentes" && input.es_titular_arriendo) {
     await verificarFlagUnico(tabla, "es_titular_arriendo", correo, "Ya hay un titular del arriendo seleccionado. Desmárcalo antes de elegir otro.", id);
   }
 
-  const { correo: correoInput, ...campos } = input;
+  const { correo: correoInput, ...resto } = input;
   void correoInput;
+  const campos = filtrarCampos(tabla, resto);
   const { data, error } = await supabase.from(tabla).update(campos).eq("id", id).select().single();
   if (error) throw new Error(error.message);
   return data;

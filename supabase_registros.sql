@@ -21,7 +21,8 @@ alter table residentes add column if not exists eliminado boolean not null defau
 alter table residentes add column if not exists numero_matricula text;
 alter table residentes add column if not exists ciudad text;
 
--- Campo exclusivo de Residentes (Propietarios no lo tiene)
+-- Campos exclusivos de Residentes (Propietarios no los tiene)
+alter table residentes add column if not exists inmueble_arrendado text;
 alter table residentes add column if not exists es_titular_arriendo boolean not null default false;
 
 create table if not exists propietarios (
