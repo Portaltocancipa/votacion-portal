@@ -54,9 +54,14 @@ export async function buscarVotante(correo: string): Promise<Votante | null> {
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
     // Columnas: ID, Unidad, Nombre, Correo, Cantidad, Habilitado, Token
-    const [, unidad, nombre, correoSheet, cantidadStr, habilitadoStr, tokenStr] = cols;
+    // La columna "Cantidad" en el Sheet se llena con el total de unidades que
+    // representa ese correo, repetido en cada una de sus filas (no "1 por
+    // fila"). Sumarla tal cual eleva el peso al cuadrado cuando un correo
+    // tiene varias filas (ej. 3 filas con "3" cada una -> 9 en vez de 3).
+    // Cada fila = una unidad = 1 voto; el total es la cantidad de filas.
+    const [, unidad, nombre, correoSheet, , habilitadoStr, tokenStr] = cols;
     if (correoSheet?.toLowerCase() === correo.toLowerCase()) {
-      detalles.push({ unidad, nombre, cantidad: parseInt(cantidadStr) || 1 });
+      detalles.push({ unidad, nombre, cantidad: 1 });
       if (habilitadoStr?.toLowerCase() === "no") habilitado = false;
       if (!token && tokenStr) token = tokenStr.trim();
     }
@@ -67,7 +72,7 @@ export async function buscarVotante(correo: string): Promise<Votante | null> {
   return {
     nombre: detalles[0].nombre,
     correo,
-    cantidad: detalles.reduce((s, d) => s + d.cantidad, 0),
+    cantidad: detalles.length,
     unidades: detalles.map(d => d.unidad).filter(Boolean),
     detalles,
     habilitado,
