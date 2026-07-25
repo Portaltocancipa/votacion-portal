@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { verificarToken } from "@/lib/sheet";
 
 export const ESPECIES_MASCOTA = ["Perro", "Gato", "Conejo", "Hámster"];
 export const TAMANOS_MASCOTA = ["Pequeño", "Mediano", "Grande"];
@@ -36,7 +37,9 @@ export async function listarMascotasPorCorreo(correo: string) {
   return data ?? [];
 }
 
-export async function crearMascota(input: MascotaInput) {
+export async function crearMascota(input: MascotaInput, token: string | undefined) {
+  if (!(await verificarToken(input.correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("mascotas")
@@ -47,7 +50,9 @@ export async function crearMascota(input: MascotaInput) {
   return data;
 }
 
-export async function actualizarMascota(id: string, correo: string, input: Partial<MascotaInput>) {
+export async function actualizarMascota(id: string, correo: string, input: Partial<MascotaInput>, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from("mascotas").select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);
@@ -61,7 +66,9 @@ export async function actualizarMascota(id: string, correo: string, input: Parti
   return data;
 }
 
-export async function borrarMascota(id: string, correo: string) {
+export async function borrarMascota(id: string, correo: string, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from("mascotas").select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);

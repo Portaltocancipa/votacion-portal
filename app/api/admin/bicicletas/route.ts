@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listarTodasBicicletas } from "@/lib/bicicletas";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
+import { verificarAdmin, respuestaNoAutorizado, respuestaMalConfigurado } from "@/lib/adminAuth";
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const eliminados = req.nextUrl.searchParams.get("eliminados") === "true";
   const data = await listarTodasBicicletas(eliminados);

@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { verificarToken } from "@/lib/sheet";
 
 export interface BicicletaInput {
   correo: string;
@@ -34,7 +35,9 @@ export async function listarBicicletasPorCorreo(correo: string) {
   return data ?? [];
 }
 
-export async function crearBicicleta(input: BicicletaInput) {
+export async function crearBicicleta(input: BicicletaInput, token: string | undefined) {
+  if (!(await verificarToken(input.correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("bicicletas")
@@ -45,7 +48,9 @@ export async function crearBicicleta(input: BicicletaInput) {
   return data;
 }
 
-export async function actualizarBicicleta(id: string, correo: string, input: Partial<BicicletaInput>) {
+export async function actualizarBicicleta(id: string, correo: string, input: Partial<BicicletaInput>, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from("bicicletas").select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);
@@ -59,7 +64,9 @@ export async function actualizarBicicleta(id: string, correo: string, input: Par
   return data;
 }
 
-export async function borrarBicicleta(id: string, correo: string) {
+export async function borrarBicicleta(id: string, correo: string, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from("bicicletas").select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);

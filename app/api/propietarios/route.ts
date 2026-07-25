@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!votante) return NextResponse.json({ error: "Correo no registrado" }, { status: 403 });
 
   try {
-    const data = await crearRegistro("propietarios", body);
+    const data = await crearRegistro("propietarios", body, body.token);
     return NextResponse.json(data);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error al guardar" }, { status: 500 });

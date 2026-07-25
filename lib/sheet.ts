@@ -79,3 +79,14 @@ export async function buscarVotante(correo: string): Promise<Votante | null> {
     token,
   };
 }
+
+// Antes solo /api/validar (el login) revisaba el token; votar y crear/editar/
+// borrar residentes, propietarios, parqueadero, mascotas y bicicletas solo
+// pedían el correo, que es público/adivinable. Esta función centraliza la
+// verificación para que esas acciones también exijan el token correcto.
+export async function verificarToken(correo: string, token: string | undefined): Promise<boolean> {
+  const votante = await buscarVotante(correo);
+  if (!votante) return false;
+  if (!votante.token) return true; // cuenta sin token configurado en el Sheet
+  return !!token && token.trim().toLowerCase() === votante.token.toLowerCase();
+}

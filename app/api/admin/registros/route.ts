@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listarTodos, TablaRegistro } from "@/lib/registros";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
+import { verificarAdmin, respuestaNoAutorizado, respuestaMalConfigurado } from "@/lib/adminAuth";
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const tabla = req.nextUrl.searchParams.get("tabla") as TablaRegistro | null;
   if (tabla !== "residentes" && tabla !== "propietarios") {

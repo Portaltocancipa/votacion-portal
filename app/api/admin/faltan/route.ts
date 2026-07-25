@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { getAllUnidades } from "@/lib/sheet";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
+import { verificarAdmin, respuestaNoAutorizado, respuestaMalConfigurado } from "@/lib/adminAuth";
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const encuesta_id = req.nextUrl.searchParams.get("encuesta_id");
   if (!encuesta_id) return NextResponse.json({ error: "Falta encuesta_id" }, { status: 400 });

@@ -124,7 +124,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
     await fetch(`/api/${tipo}/${confirmarBorrarId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ correo }),
+      body: JSON.stringify({ correo, token }),
     });
     setBorrandoId(null);
     cancelarBorrado();
@@ -149,7 +149,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
     const res = await fetch(url, {
       method: editandoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, correo }),
+      body: JSON.stringify({ ...payload, correo, token }),
     });
     const data = await res.json();
     if (data.id) {

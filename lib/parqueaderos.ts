@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { verificarToken } from "@/lib/sheet";
 
 export const MAX_PARQUEADEROS_POR_CUENTA = 4;
 
@@ -40,29 +41,33 @@ export async function listarParqueaderosPorCorreo(correo: string) {
   return data ?? [];
 }
 
-export async function crearParqueadero(input: ParqueaderoInput) {
+export async function crearParqueadero(input: ParqueaderoInput, token: string | undefined) {
+  if (!(await verificarToken(input.correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
 
-  const { count, error: errConteo } = await supabase
-    .from("parqueaderos")
-    .select("id", { count: "exact", head: true })
-    .eq("correo", input.correo.toLowerCase())
-    .eq("eliminado", false);
-  if (errConteo) throw new Error(errConteo.message);
-  if ((count ?? 0) >= MAX_PARQUEADEROS_POR_CUENTA) {
-    throw new Error(`Ya alcanzaste el máximo de ${MAX_PARQUEADEROS_POR_CUENTA} vehículos registrados.`);
-  }
-
-  const { data, error } = await supabase
-    .from("parqueaderos")
-    .insert({ ...input, correo: input.correo.toLowerCase() })
-    .select()
-    .single();
+  // El conteo y el insert corren atómicos dentro de una función de Postgres
+  // (pg_advisory_xact_lock por correo), para que dos envíos casi simultáneos
+  // no puedan pasar ambos el chequeo de "menos de 4" antes de insertar.
+  const { data, error } = await supabase.rpc("crear_parqueadero_atomico", {
+    p_correo: input.correo,
+    p_unidad: input.unidad,
+    p_numero_parqueadero: input.numero_parqueadero,
+    p_nombres: input.nombres,
+    p_apellidos: input.apellidos,
+    p_placa: input.placa,
+    p_marca: input.marca,
+    p_modelo: input.modelo,
+    p_tipo_vehiculo: input.tipo_vehiculo,
+    p_max: MAX_PARQUEADEROS_POR_CUENTA,
+  });
   if (error) throw new Error(error.message);
   return data;
 }
 
-export async function actualizarParqueadero(id: string, correo: string, input: Partial<ParqueaderoInput>) {
+export async function actualizarParqueadero(id: string, correo: string, input: Partial<ParqueaderoInput>, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from("parqueaderos").select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);
@@ -76,7 +81,9 @@ export async function actualizarParqueadero(id: string, correo: string, input: P
   return data;
 }
 
-export async function borrarParqueadero(id: string, correo: string) {
+export async function borrarParqueadero(id: string, correo: string, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from("parqueaderos").select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);

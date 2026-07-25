@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
+import { verificarAdmin, respuestaNoAutorizado, respuestaMalConfigurado } from "@/lib/adminAuth";
+import { validarEncuestaNueva } from "@/lib/encuestas";
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const supabase = getSupabase();
   const { data } = await supabase.from("encuestas").select("*").order("created_at", { ascending: false });
@@ -13,12 +16,17 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
-  const { pregunta, opciones, tipo, activa } = await req.json();
-  if (!pregunta || !opciones?.length) {
-    return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+  const body = await req.json();
+  const { pregunta, opciones, tipo, activa } = body;
+  const errorValidacion = validarEncuestaNueva(body);
+  if (errorValidacion) {
+    return NextResponse.json({ error: errorValidacion }, { status: 400 });
   }
 
   const supabase = getSupabase();

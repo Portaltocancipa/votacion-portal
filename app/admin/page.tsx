@@ -6,8 +6,6 @@ import { formatUnidad } from "@/lib/unidad";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
-const ADMIN_KEY = "portal2026";
-const BASE_TOTAL = 80;
 
 interface RegistroAdmin {
   id: string;
@@ -133,14 +131,24 @@ export default function AdminPage() {
   const [creando, setCreando] = useState(false);
   const [errForm, setErrForm] = useState("");
 
-  const login = () => {
-    if (key === ADMIN_KEY) { setAutenticado(true); setErrorAuth(""); }
-    else setErrorAuth("Clave incorrecta");
+  // La clave nunca se guarda hardcodeada en el cliente: es lo que el admin
+  // escribió en el login, y el servidor es quien decide si es correcta.
+  const adminHeaders = useCallback(() => ({ "x-admin-key": key }), [key]);
+
+  const login = async () => {
+    setErrorAuth("");
+    try {
+      const res = await fetch("/api/admin/encuestas", { headers: adminHeaders() });
+      if (res.ok) setAutenticado(true);
+      else setErrorAuth("Clave incorrecta");
+    } catch {
+      setErrorAuth("Error de conexión");
+    }
   };
 
   const cargarResultados = async () => {
     setCargando(true);
-    const res = await fetch(`/api/resultados?key=${ADMIN_KEY}`);
+    const res = await fetch("/api/resultados", { headers: adminHeaders() });
     const data = await res.json();
     const arr: EncuestaResult[] = Array.isArray(data) ? data : [];
     setDatos(arr);
@@ -150,30 +158,30 @@ export default function AdminPage() {
 
   const cargarFaltan = async (encuesta_id: string) => {
     setCargandoFaltan(true);
-    const res = await fetch(`/api/admin/faltan?key=${ADMIN_KEY}&encuesta_id=${encuesta_id}`);
+    const res = await fetch(`/api/admin/faltan?encuesta_id=${encuesta_id}`, { headers: adminHeaders() });
     const data = await res.json();
     setFaltanUnidades(Array.isArray(data.faltan) ? data.faltan : []);
     setCargandoFaltan(false);
   };
 
   const cargarEncuestas = async () => {
-    const res = await fetch(`/api/admin/encuestas?key=${ADMIN_KEY}`);
+    const res = await fetch("/api/admin/encuestas", { headers: adminHeaders() });
     const data = await res.json();
     setEncuestas(Array.isArray(data) ? data : []);
   };
 
   const cargarRegistros = useCallback(async (tipo: "residentes" | "propietarios", eliminados: boolean) => {
     setCargandoRegistros(true);
-    const res = await fetch(`/api/admin/registros?key=${ADMIN_KEY}&tabla=${tipo}&eliminados=${eliminados}`);
+    const res = await fetch(`/api/admin/registros?tabla=${tipo}&eliminados=${eliminados}`, { headers: adminHeaders() });
     const data = await res.json();
     setRegistros(Array.isArray(data) ? data : []);
     setCargandoRegistros(false);
-  }, []);
+  }, [adminHeaders]);
 
   const restaurarRegistro = async (id: string) => {
-    await fetch(`/api/admin/registros/${id}?key=${ADMIN_KEY}`, {
+    await fetch(`/api/admin/registros/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...adminHeaders() },
       body: JSON.stringify({ tabla: registrosTipo }),
     });
     cargarRegistros(registrosTipo, verEliminados);
@@ -181,40 +189,40 @@ export default function AdminPage() {
 
   const cargarParqueaderos = useCallback(async (eliminados: boolean) => {
     setCargandoParqueaderos(true);
-    const res = await fetch(`/api/admin/parqueaderos?key=${ADMIN_KEY}&eliminados=${eliminados}`);
+    const res = await fetch(`/api/admin/parqueaderos?eliminados=${eliminados}`, { headers: adminHeaders() });
     const data = await res.json();
     setParqueaderos(Array.isArray(data) ? data : []);
     setCargandoParqueaderos(false);
-  }, []);
+  }, [adminHeaders]);
 
   const restaurarParqueadero = async (id: string) => {
-    await fetch(`/api/admin/parqueaderos/${id}?key=${ADMIN_KEY}`, { method: "PUT" });
+    await fetch(`/api/admin/parqueaderos/${id}`, { method: "PUT", headers: adminHeaders() });
     cargarParqueaderos(verEliminadosParqueadero);
   };
 
   const cargarMascotas = useCallback(async (eliminados: boolean) => {
     setCargandoMascotas(true);
-    const res = await fetch(`/api/admin/mascotas?key=${ADMIN_KEY}&eliminados=${eliminados}`);
+    const res = await fetch(`/api/admin/mascotas?eliminados=${eliminados}`, { headers: adminHeaders() });
     const data = await res.json();
     setMascotas(Array.isArray(data) ? data : []);
     setCargandoMascotas(false);
-  }, []);
+  }, [adminHeaders]);
 
   const restaurarMascota = async (id: string) => {
-    await fetch(`/api/admin/mascotas/${id}?key=${ADMIN_KEY}`, { method: "PUT" });
+    await fetch(`/api/admin/mascotas/${id}`, { method: "PUT", headers: adminHeaders() });
     cargarMascotas(verEliminadosMascota);
   };
 
   const cargarBicicletas = useCallback(async (eliminados: boolean) => {
     setCargandoBicicletas(true);
-    const res = await fetch(`/api/admin/bicicletas?key=${ADMIN_KEY}&eliminados=${eliminados}`);
+    const res = await fetch(`/api/admin/bicicletas?eliminados=${eliminados}`, { headers: adminHeaders() });
     const data = await res.json();
     setBicicletas(Array.isArray(data) ? data : []);
     setCargandoBicicletas(false);
-  }, []);
+  }, [adminHeaders]);
 
   const restaurarBicicleta = async (id: string) => {
-    await fetch(`/api/admin/bicicletas/${id}?key=${ADMIN_KEY}`, { method: "PUT" });
+    await fetch(`/api/admin/bicicletas/${id}`, { method: "PUT", headers: adminHeaders() });
     cargarBicicletas(verEliminadosBicicleta);
   };
 
@@ -250,7 +258,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!autenticado || tab !== "resultados") return;
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/resultados?key=${ADMIN_KEY}`);
+      const res = await fetch("/api/resultados", { headers: adminHeaders() });
       const data = await res.json();
       if (Array.isArray(data)) {
         setDatos(data);
@@ -258,9 +266,9 @@ export default function AdminPage() {
       }
     }, 8000);
     return () => clearInterval(interval);
-  }, [autenticado, tab, encSeleccionada]);
+  }, [autenticado, tab, encSeleccionada, adminHeaders]);
 
-  const pct = (v: number) => BASE_TOTAL > 0 ? Math.round((v / BASE_TOTAL) * 100) : 0;
+  const pct = (v: number, total: number) => total > 0 ? Math.round((v / total) * 100) : 0;
 
   const updateNumOpciones = (n: number) => {
     const curr = form.opciones;
@@ -287,9 +295,9 @@ export default function AdminPage() {
     setCreando(true); setErrForm("");
 
     if (editandoId) {
-      const res = await fetch(`/api/admin/encuestas/${editandoId}?key=${ADMIN_KEY}`, {
+      const res = await fetch(`/api/admin/encuestas/${editandoId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({
           pregunta: form.pregunta.trim(),
           opciones: form.opciones.map(o => o.trim()),
@@ -307,9 +315,9 @@ export default function AdminPage() {
         setErrForm(data.error || "Error al guardar");
       }
     } else {
-      const res = await fetch(`/api/admin/encuestas?key=${ADMIN_KEY}`, {
+      const res = await fetch("/api/admin/encuestas", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({
           pregunta: form.pregunta.trim(),
           opciones: form.opciones.map(o => o.trim()),
@@ -330,9 +338,9 @@ export default function AdminPage() {
   };
 
   const toggleActiva = async (id: string, activa: boolean) => {
-    await fetch(`/api/admin/encuestas/${id}?key=${ADMIN_KEY}`, {
+    await fetch(`/api/admin/encuestas/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...adminHeaders() },
       body: JSON.stringify({ activa: !activa }),
     });
     cargarEncuestas();
@@ -340,7 +348,7 @@ export default function AdminPage() {
 
   const eliminar = async (id: string) => {
     if (!confirm("¿Eliminar esta encuesta y todas sus respuestas? Esta acción no se puede deshacer.")) return;
-    await fetch(`/api/admin/encuestas/${id}?key=${ADMIN_KEY}`, { method: "DELETE" });
+    await fetch(`/api/admin/encuestas/${id}`, { method: "DELETE", headers: adminHeaders() });
     cargarEncuestas();
     cargarResultados();
   };
@@ -586,10 +594,10 @@ export default function AdminPage() {
                     <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: "1px solid #e5e5e5" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                         <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Participación · {encActual.personasHanVotado} personas</span>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.hanRespondido)}%</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: VERDE }}>{pct(encActual.hanRespondido, encActual.totalVotantes)}%</span>
                       </div>
                       <div style={{ background: "#e5e7eb", borderRadius: 8, height: 14, overflow: "hidden" }}>
-                        <div style={{ background: VERDE, width: `${pct(encActual.hanRespondido)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
+                        <div style={{ background: VERDE, width: `${pct(encActual.hanRespondido, encActual.totalVotantes)}%`, height: "100%", borderRadius: 8, transition: "width 0.6s ease" }} />
                       </div>
                       <p style={{ fontSize: 12, color: "#111", margin: "6px 0 0" }}>Se han recibido <strong>{encActual.hanRespondido}</strong> votos de <strong>{encActual.totalVotantes}</strong> unidades</p>
                     </div>

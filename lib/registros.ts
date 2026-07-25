@@ -1,5 +1,6 @@
 import { getSupabase } from "@/lib/supabase";
 import { TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
+import { verificarToken } from "@/lib/sheet";
 
 export type TablaRegistro = "residentes" | "propietarios";
 
@@ -93,7 +94,9 @@ async function verificarFlagUnico(tabla: TablaRegistro, campo: "es_contacto_prin
   if (data && data.length > 0) throw new Error(mensajeError);
 }
 
-export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput) {
+export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput, token: string | undefined) {
+  if (!(await verificarToken(input.correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   if (input.es_contacto_principal) {
     await verificarFlagUnico(tabla, "es_contacto_principal", input.correo, "Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.");
@@ -111,7 +114,9 @@ export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput) 
   return data;
 }
 
-export async function actualizarRegistro(tabla: TablaRegistro, id: string, correo: string, input: Partial<RegistroInput>) {
+export async function actualizarRegistro(tabla: TablaRegistro, id: string, correo: string, input: Partial<RegistroInput>, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from(tabla).select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);
@@ -133,7 +138,9 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
   return data;
 }
 
-export async function borrarRegistro(tabla: TablaRegistro, id: string, correo: string) {
+export async function borrarRegistro(tabla: TablaRegistro, id: string, correo: string, token: string | undefined) {
+  if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
+
   const supabase = getSupabase();
   const { data: existente, error: errBusqueda } = await supabase.from(tabla).select("correo").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);

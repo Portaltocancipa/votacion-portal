@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
+import { verificarAdmin, respuestaNoAutorizado, respuestaMalConfigurado } from "@/lib/adminAuth";
+import { validarEncuestaParcial } from "@/lib/encuestas";
 
 export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const { id } = await props.params;
   const body = await req.json();
+  const errorValidacion = validarEncuestaParcial(body);
+  if (errorValidacion) return NextResponse.json({ error: errorValidacion }, { status: 400 });
+
   const supabase = getSupabase();
   const { data, error } = await supabase.from("encuestas").update(body).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -16,8 +22,11 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const { id } = await props.params;
   const supabase = getSupabase();

@@ -3,11 +3,17 @@ import { buscarVotante } from "@/lib/sheet";
 import { getSupabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
-  const { correo, opcion } = await req.json();
+  const { correo, token, opcion } = await req.json();
   if (!correo || !opcion) return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
 
   const votante = await buscarVotante(correo.trim());
   if (!votante) return NextResponse.json({ error: "Correo no válido" }, { status: 403 });
+  if (votante.token && token?.trim().toLowerCase() !== votante.token.toLowerCase()) {
+    return NextResponse.json({ error: "Token incorrecto" }, { status: 401 });
+  }
+  if (!votante.habilitado) {
+    return NextResponse.json({ error: "No estás habilitado(a) para votar" }, { status: 403 });
+  }
 
   const supabase = getSupabase();
   const { data: existing } = await supabase.from("votos").select("id").eq("correo", votante.correo.toLowerCase()).maybeSingle();

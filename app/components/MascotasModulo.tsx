@@ -91,7 +91,7 @@ export default function MascotasModulo({ correo, unidades, token }: Props) {
     await fetch(`/api/mascotas/${confirmarBorrarId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ correo }),
+      body: JSON.stringify({ correo, token }),
     });
     setBorrandoId(null);
     cancelarBorrado();
@@ -107,7 +107,7 @@ export default function MascotasModulo({ correo, unidades, token }: Props) {
     const res = await fetch(url, {
       method: editandoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, correo }),
+      body: JSON.stringify({ ...form, correo, token }),
     });
     const data = await res.json();
     if (data.id) {

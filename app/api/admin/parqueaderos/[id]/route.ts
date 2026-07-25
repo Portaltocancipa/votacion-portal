@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { restaurarParqueadero } from "@/lib/parqueaderos";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
+import { verificarAdmin, respuestaNoAutorizado, respuestaMalConfigurado } from "@/lib/adminAuth";
 
 export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const { id } = await props.params;
   try {

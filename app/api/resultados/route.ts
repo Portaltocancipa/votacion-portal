@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
-
-const ADMIN_KEY = process.env.ADMIN_KEY || "portal2026";
-const BASE_TOTAL = 80;
+import { getAllUnidades } from "@/lib/sheet";
+import { verificarAdmin, respuestaNoAutorizado, respuestaMalConfigurado } from "@/lib/adminAuth";
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get("key");
-  if (key !== ADMIN_KEY) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  try {
+    if (!verificarAdmin(req)) return respuestaNoAutorizado();
+  } catch {
+    return respuestaMalConfigurado();
+  }
 
   const supabase = getSupabase();
-  const { data: encuestas } = await supabase
-    .from("encuestas")
-    .select("*")
-    .order("created_at", { ascending: true });
+  const [unidades, { data: encuestas }] = await Promise.all([
+    getAllUnidades(),
+    supabase.from("encuestas").select("*").order("created_at", { ascending: true }),
+  ]);
+  const totalUnidades = unidades.length;
 
   const result = [];
   for (const enc of encuestas ?? []) {
@@ -22,8 +25,12 @@ export async function GET(req: NextRequest) {
       .eq("encuesta_id", enc.id)
       .order("created_at", { ascending: false });
 
+    // Una encuesta con `opciones` mal formada no debe tumbar el cálculo de
+    // las demás: se trata como sin opciones en vez de lanzar.
+    const opcionesValidas = Array.isArray(enc.opciones) ? enc.opciones : [];
+
     const conteo: Record<string, { votos: number }> = {};
-    for (const op of enc.opciones) conteo[op] = { votos: 0 };
+    for (const op of opcionesValidas) conteo[op] = { votos: 0 };
 
     let totalCuotasVotadas = 0;
     for (const r of respuestas ?? []) {
@@ -42,8 +49,8 @@ export async function GET(req: NextRequest) {
       activa: enc.activa,
       personasHanVotado: (respuestas ?? []).length,
       hanRespondido: totalCuotasVotadas,
-      faltan: BASE_TOTAL - totalCuotasVotadas,
-      totalVotantes: BASE_TOTAL,
+      faltan: totalUnidades - totalCuotasVotadas,
+      totalVotantes: totalUnidades,
       conteo,
       detalle: respuestas ?? [],
     });

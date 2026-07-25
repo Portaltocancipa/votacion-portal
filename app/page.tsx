@@ -115,7 +115,7 @@ export default function Home() {
       const res = await fetch("/api/responder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo: votante?.correo, encuesta_id: encId, opciones_elegidas: enc.seleccion }),
+        body: JSON.stringify({ correo: votante?.correo, token, encuesta_id: encId, opciones_elegidas: enc.seleccion }),
       });
       const data = await res.json();
       if (data.ok) {
