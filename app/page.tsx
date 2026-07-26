@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import RegistroModulo from "./components/RegistroModulo";
 import ParqueaderoModulo from "./components/ParqueaderoModulo";
 import MascotasModulo from "./components/MascotasModulo";
@@ -43,6 +43,34 @@ export default function Home() {
   const [votante, setVotante] = useState<Votante | null>(null);
   const [encuestas, setEncuestas] = useState<Encuesta[]>([]);
 
+  // Refresca la lista de encuestas activas contra el servidor. Se usa tanto
+  // al iniciar sesión como en el polling periódico de abajo, para que si el
+  // admin activa/desactiva una encuesta a media asamblea, quien ya tiene la
+  // página abierta la vea aparecer/desaparecer sin tener que salir y volver
+  // a entrar. Al hacer merge conserva la selección en curso de cada una.
+  const cargarEncuestas = async (correoActual: string) => {
+    try {
+      const encRes = await fetch(`/api/encuestas?correo=${encodeURIComponent(correoActual)}`);
+      const encData: any[] = await encRes.json();
+      if (!Array.isArray(encData)) return;
+      setEncuestas(prev => {
+        const porId = new Map(prev.map(e => [e.id, e]));
+        return encData.map((e: any) => {
+          const anterior = porId.get(e.id);
+          return {
+            ...e,
+            seleccion: anterior?.seleccion ?? [],
+            enviando: anterior?.enviando ?? false,
+            respondida: e.yaRespondio,
+            error: anterior?.error ?? "",
+          };
+        });
+      });
+    } catch {
+      // Silencioso: si falla un refresco periódico no debe interrumpir la sesión.
+    }
+  };
+
   const validar = async () => {
     const c = correo.trim().toLowerCase();
     const t = token.trim();
@@ -64,16 +92,7 @@ export default function Home() {
         setPopup(true);
       } else {
         setVotante({ ...data.votante, puedeVotar: !!data.puedeVotar });
-        const encRes = await fetch(`/api/encuestas?correo=${encodeURIComponent(c)}`);
-        const encData: any[] = await encRes.json();
-        const mapped: Encuesta[] = encData.map((e: any) => ({
-          ...e,
-          seleccion: [],
-          enviando: false,
-          respondida: e.yaRespondio,
-          error: "",
-        }));
-        setEncuestas(mapped);
+        await cargarEncuestas(c);
         setFase("menu");
       }
     } catch {
@@ -81,6 +100,12 @@ export default function Home() {
     }
     setCargando(false);
   };
+
+  useEffect(() => {
+    if (!votante) return;
+    const interval = setInterval(() => cargarEncuestas(votante.correo), 10000);
+    return () => clearInterval(interval);
+  }, [votante]);
 
   const salir = () => {
     setFase("bienvenida"); setCorreo(""); setToken(""); setVotante(null); setEncuestas([]);
