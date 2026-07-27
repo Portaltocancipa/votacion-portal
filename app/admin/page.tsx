@@ -7,6 +7,32 @@ import { formatUnidad } from "@/lib/unidad";
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 
+// Convierte cada respuesta (que puede representar varias unidades/cuotas
+// en un solo registro) en una fila por cuota. Se usa en la tabla de detalle
+// en pantalla, en el export a Excel y en el reporte en PDF, para no repetir
+// la misma lógica de parseo tres veces.
+function expandirDetalleVotos(detalle: any[]): { nombre: string; unidad: string; opciones: string[]; fecha: string }[] {
+  const filas: { nombre: string; unidad: string; opciones: string[]; fecha: string }[] = [];
+  detalle.forEach(v => {
+    let detalles: { unidad: string; nombre: string; cantidad: number }[];
+    try {
+      const p = JSON.parse(v.unidad);
+      if (Array.isArray(p) && p[0]?.unidad !== undefined) detalles = p;
+      else if (Array.isArray(p)) detalles = p.map((u: string) => ({ unidad: u, nombre: v.nombre, cantidad: 1 }));
+      else detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }];
+    } catch {
+      detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }];
+    }
+    const fecha = new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" });
+    detalles.forEach(d => {
+      Array.from({ length: d.cantidad || 1 }).forEach(() => {
+        filas.push({ nombre: d.nombre, unidad: d.unidad, opciones: v.opciones_elegidas ?? [], fecha });
+      });
+    });
+  });
+  return filas;
+}
+
 interface RegistroAdmin {
   id: string;
   correo: string;
@@ -122,6 +148,17 @@ export default function AdminPage() {
   const [datos, setDatos] = useState<EncuestaResult[]>([]);
   const [encSeleccionada, setEncSeleccionada] = useState("");
   const [cargando, setCargando] = useState(false);
+
+  // Reporte en PDF con encuestas y secciones a elección del admin.
+  const [mostrarConfigReporte, setMostrarConfigReporte] = useState(false);
+  const [seleccionReporte, setSeleccionReporte] = useState<Record<string, boolean>>({});
+  const [seccionesReporte, setSeccionesReporte] = useState({ resumen: true, detalle: true, faltantes: true });
+  const [generandoReporte, setGenerandoReporte] = useState(false);
+  const [datosReporte, setDatosReporte] = useState<{
+    encuestas: EncuestaResult[];
+    secciones: { resumen: boolean; detalle: boolean; faltantes: boolean };
+    faltantesPorEncuesta: Record<string, string[]>;
+  } | null>(null);
 
   const [encuestas, setEncuestas] = useState<EncuestaAdmin[]>([]);
   const [faltanUnidades, setFaltanUnidades] = useState<string[]>([]);
@@ -364,22 +401,44 @@ export default function AdminPage() {
     setTimeout(() => document.getElementById("__print_style__")?.remove(), 1000);
   };
 
+  const generarReporte = async () => {
+    const seleccionadas = datos.filter(e => seleccionReporte[e.id]);
+    if (seleccionadas.length === 0) return;
+    setGenerandoReporte(true);
+    const faltantesPorEncuesta: Record<string, string[]> = {};
+    if (seccionesReporte.faltantes) {
+      await Promise.all(seleccionadas.map(async e => {
+        const res = await fetch(`/api/admin/faltan?encuesta_id=${e.id}`, { headers: adminHeaders() });
+        const data = await res.json();
+        faltantesPorEncuesta[e.id] = Array.isArray(data.faltan) ? data.faltan : [];
+      }));
+    }
+    setDatosReporte({ encuestas: seleccionadas, secciones: seccionesReporte, faltantesPorEncuesta });
+  };
+
+  // Espera a que React pinte #reporte-pdf con los datos ya cargados antes de
+  // imprimir (setState no actualiza el DOM de forma síncrona), y limpia todo
+  // al terminar sin importar si se imprimió o se canceló el diálogo.
+  useEffect(() => {
+    if (!datosReporte) return;
+    const raf = requestAnimationFrame(() => {
+      const style = document.createElement("style");
+      style.id = "__print_style_reporte__";
+      style.innerHTML = `@media print { body > * { display: none !important; } #reporte-pdf { display: block !important; } @page { margin: 18mm; } }`;
+      document.head.appendChild(style);
+      window.print();
+      style.remove();
+      setDatosReporte(null);
+      setGenerandoReporte(false);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [datosReporte]);
+
   const exportarXLSX = () => {
     if (!encActual) return;
-    const filas: any[] = [];
-    encActual.detalle.forEach(v => {
-      let detalles: { unidad: string; nombre: string; cantidad: number }[];
-      try {
-        const p = JSON.parse(v.unidad);
-        if (Array.isArray(p) && p[0]?.unidad !== undefined) detalles = p;
-        else detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }];
-      } catch { detalles = [{ unidad: v.unidad || "—", nombre: v.nombre, cantidad: v.cantidad || 1 }]; }
-      const expandidas = detalles.flatMap(d => Array.from({ length: d.cantidad || 1 }, () => ({ unidad: d.unidad, nombre: d.nombre })));
-      const fecha = new Date(v.created_at).toLocaleString("es-CO", { timeZone: "America/Bogota" });
-      expandidas.forEach(f => {
-        filas.push({ "#": filas.length + 1, Nombre: f.nombre, Unidad: f.unidad, "Opción": (v.opciones_elegidas ?? []).join(", "), Fecha: fecha });
-      });
-    });
+    const filas = expandirDetalleVotos(encActual.detalle).map((f, i) => ({
+      "#": i + 1, Nombre: f.nombre, Unidad: f.unidad, "Opción": f.opciones.join(", "), Fecha: f.fecha,
+    }));
     const ws = XLSX.utils.json_to_sheet(filas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Detalle");
@@ -570,11 +629,61 @@ export default function AdminPage() {
                       ))}
                     </select>
                   </div>
-                  <button onClick={exportarPDF}
-                    style={{ background: VERDE, color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                    Exportar PDF
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => {
+                        if (!mostrarConfigReporte && Object.keys(seleccionReporte).length === 0) {
+                          setSeleccionReporte(Object.fromEntries(datos.map(e => [e.id, true])));
+                        }
+                        setMostrarConfigReporte(v => !v);
+                      }}
+                      style={{ background: mostrarConfigReporte ? NARANJA : "#fff", color: mostrarConfigReporte ? "#fff" : NARANJA, border: `2px solid ${NARANJA}`, borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                      Reporte personalizado
+                    </button>
+                    <button onClick={exportarPDF}
+                      style={{ background: VERDE, color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                      Exportar PDF
+                    </button>
+                  </div>
                 </div>
+
+                {mostrarConfigReporte && (
+                  <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", marginBottom: 16, border: `2px solid ${NARANJA}30` }}>
+                    <h3 style={{ fontWeight: 700, color: "#111", fontSize: 15, margin: "0 0 14px" }}>Reporte personalizado en PDF</h3>
+
+                    <p style={{ fontSize: 12, fontWeight: 700, color: "#111", marginBottom: 8 }}>Encuestas a incluir</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+                      {datos.map(e => (
+                        <label key={e.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", fontSize: 13, color: "#111" }}>
+                          <input type="checkbox" checked={!!seleccionReporte[e.id]}
+                            onChange={ev => setSeleccionReporte(prev => ({ ...prev, [e.id]: ev.target.checked }))}
+                            style={{ marginTop: 2 }}/>
+                          <span>{e.activa ? "● " : "○ "}{e.pregunta}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    <p style={{ fontSize: 12, fontWeight: 700, color: "#111", marginBottom: 8 }}>Secciones a incluir</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 18, marginBottom: 18 }}>
+                      {([["resumen", "Resumen (votos y participación)"], ["detalle", "Detalle de votos"], ["faltantes", "Quiénes no han votado"]] as const).map(([k, label]) => (
+                        <label key={k} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#111" }}>
+                          <input type="checkbox" checked={seccionesReporte[k]}
+                            onChange={ev => setSeccionesReporte(prev => ({ ...prev, [k]: ev.target.checked }))}/>
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+
+                    <button onClick={generarReporte} disabled={generandoReporte || Object.values(seleccionReporte).every(v => !v)}
+                      style={{
+                        background: generandoReporte ? "#9e9e9e" : NARANJA, color: "#fff", border: "none", borderRadius: 8,
+                        padding: "10px 20px", fontSize: 13, fontWeight: 800,
+                        cursor: generandoReporte ? "not-allowed" : "pointer",
+                      }}>
+                      {generandoReporte ? "Generando..." : "Generar PDF"}
+                    </button>
+                  </div>
+                )}
 
                 {encActual && (
                   <div id="resultados-pdf">
@@ -699,6 +808,84 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
+
+                <div id="reporte-pdf" style={{ display: "none" }}>
+                  {datosReporte && datosReporte.encuestas.map((enc, idx) => (
+                    <div key={enc.id} style={{ pageBreakBefore: idx === 0 ? "auto" : "always", marginBottom: 24 }}>
+                      <h2 style={{ fontSize: 17, fontWeight: 800, color: VERDE, marginBottom: 2 }}>{enc.pregunta}</h2>
+                      <p style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>{enc.activa ? "Encuesta activa" : "Encuesta cerrada"}</p>
+
+                      {datosReporte.secciones.resumen && (
+                        <div style={{ marginBottom: 20 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+                            {[
+                              { label: "Votos recibidos", value: enc.hanRespondido, color: VERDE, bg: "#f1f8e9" },
+                              { label: "Faltan", value: enc.faltan, color: NARANJA, bg: "#fff8f0" },
+                              { label: "Total unidades", value: enc.totalVotantes, color: "#111", bg: "#f9f9f9" },
+                            ].map(t => (
+                              <div key={t.label} style={{ background: t.bg, border: `2px solid ${t.color}30`, borderRadius: 12, padding: "14px 16px" }}>
+                                <div style={{ fontSize: 22, fontWeight: 800, color: t.color }}>{t.value}</div>
+                                <div style={{ fontSize: 12, color: "#111", marginTop: 4, fontWeight: 600 }}>{t.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <p style={{ fontSize: 13, color: "#111", marginBottom: 10 }}>
+                            Participación: <strong>{enc.personasHanVotado}</strong> personas ·{" "}
+                            <strong>{pct(enc.hanRespondido, enc.totalVotantes)}%</strong> de las unidades
+                          </p>
+                          {Object.entries(enc.conteo).map(([op, c]) => {
+                            const p = enc.hanRespondido > 0 ? Math.round((c.votos / enc.hanRespondido) * 100) : 0;
+                            return (
+                              <div key={op} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                                <span style={{ color: "#111" }}>{op}</span>
+                                <span style={{ fontWeight: 700, color: NARANJA }}>{c.votos} votos ({p}%)</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {datosReporte.secciones.detalle && (
+                        <div style={{ marginBottom: 20 }}>
+                          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 8 }}>Detalle de votos</h3>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                            <thead>
+                              <tr>
+                                {["#", "Nombre", "Unidad", "Opción(es)", "Fecha"].map(h => (
+                                  <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: "4px 6px", color: "#111" }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {expandirDetalleVotos(enc.detalle).map((row, i) => (
+                                <tr key={i}>
+                                  <td style={{ padding: "4px 6px", color: "#111" }}>{i + 1}</td>
+                                  <td style={{ padding: "4px 6px", color: "#111" }}>{row.nombre}</td>
+                                  <td style={{ padding: "4px 6px", color: "#111", fontWeight: 700 }}>{row.unidad}</td>
+                                  <td style={{ padding: "4px 6px", color: VERDE }}>{row.opciones.join(", ")}</td>
+                                  <td style={{ padding: "4px 6px", color: "#111" }}>{row.fecha}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {datosReporte.secciones.faltantes && (
+                        <div>
+                          <h3 style={{ fontSize: 14, fontWeight: 700, color: NARANJA, marginBottom: 8 }}>
+                            Quiénes no han votado ({(datosReporte.faltantesPorEncuesta[enc.id] || []).length} unidades)
+                          </h3>
+                          <p style={{ fontSize: 12, color: "#111" }}>
+                            {(datosReporte.faltantesPorEncuesta[enc.id] || []).length === 0
+                              ? "Todas las unidades han votado."
+                              : datosReporte.faltantesPorEncuesta[enc.id].map(u => formatUnidad(u)).join(" · ")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </>
             )}
           </>
