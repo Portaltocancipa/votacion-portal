@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import { __createTable as crearTablaPDF, __drawTable as dibujarTablaPDF } from "jspdf-autotable";
 import { calcularEdad } from "@/lib/edad";
 import { formatUnidad } from "@/lib/unidad";
 
@@ -116,6 +118,87 @@ interface EncuestaAdmin {
   created_at: string;
 }
 
+type SeccionesReporte = { resumen: boolean; detalle: boolean; faltantes: boolean };
+
+// Escribe el resultado de una encuesta en el documento jsPDF (mutando `doc`),
+// respetando qué secciones pidió el admin. Se usa tanto para "Exportar PDF"
+// (una encuesta, las 3 secciones) como para el reporte con varias encuestas.
+function agregarEncuestaAlPDF(doc: jsPDF, enc: EncuestaResult, secciones: SeccionesReporte, faltantes: string[], primera: boolean) {
+  if (!primera) doc.addPage();
+  const marginX = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxWidth = pageWidth - marginX * 2;
+  let y = 18;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  const tituloLineas = doc.splitTextToSize(enc.pregunta, maxWidth);
+  doc.text(tituloLineas, marginX, y);
+  y += tituloLineas.length * 6 + 2;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text(enc.activa ? "Encuesta activa" : "Encuesta cerrada", marginX, y);
+  doc.setTextColor(20);
+  y += 9;
+
+  if (secciones.resumen) {
+    doc.setFontSize(11);
+    doc.text(`Votos recibidos: ${enc.hanRespondido}    Faltan: ${enc.faltan}    Total unidades: ${enc.totalVotantes}`, marginX, y);
+    y += 7;
+    const pct = enc.totalVotantes > 0 ? Math.round((enc.hanRespondido / enc.totalVotantes) * 100) : 0;
+    doc.text(`Participación: ${enc.personasHanVotado} personas · ${pct}% de las unidades`, marginX, y);
+    y += 9;
+    Object.entries(enc.conteo).forEach(([op, c]) => {
+      const p = enc.hanRespondido > 0 ? Math.round((c.votos / enc.hanRespondido) * 100) : 0;
+      const lineas = doc.splitTextToSize(`${op}: ${c.votos} votos (${p}%)`, maxWidth);
+      doc.text(lineas, marginX, y);
+      y += lineas.length * 6;
+    });
+    y += 6;
+  }
+
+  if (secciones.detalle) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Detalle de votos", marginX, y);
+    y += 5;
+    const filas = expandirDetalleVotos(enc.detalle);
+    const tabla = crearTablaPDF(doc, {
+      startY: y,
+      margin: { left: marginX, right: marginX },
+      head: [["#", "Nombre", "Unidad", "Opción(es)", "Fecha"]],
+      body: filas.map((f, i) => [String(i + 1), f.nombre, f.unidad, f.opciones.join(", "), f.fecha]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [27, 94, 32] },
+    });
+    dibujarTablaPDF(doc, tabla);
+    y = (tabla.finalY ?? y) + 10;
+  }
+
+  if (secciones.faltantes) {
+    if (y > pageHeight - 30) { doc.addPage(); y = 18; }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Quiénes no han votado (${faltantes.length} unidades)`, marginX, y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const texto = faltantes.length === 0 ? "Todas las unidades han votado." : faltantes.map(u => formatUnidad(u)).join(" · ");
+    doc.text(doc.splitTextToSize(texto, maxWidth), marginX, y);
+  }
+}
+
+function construirYDescargarPDF(encuestas: EncuestaResult[], secciones: SeccionesReporte, faltantesPorEncuesta: Record<string, string[]>, nombreArchivo: string) {
+  const doc = new jsPDF();
+  encuestas.forEach((enc, i) => {
+    agregarEncuestaAlPDF(doc, enc, secciones, faltantesPorEncuesta[enc.id] || [], i === 0);
+  });
+  doc.save(nombreArchivo);
+}
+
 const FORM_INIT = { pregunta: "", numOpciones: 2, opciones: ["", ""], tipo: "unica", activa: true };
 
 export default function AdminPage() {
@@ -152,13 +235,8 @@ export default function AdminPage() {
   // Reporte en PDF con encuestas y secciones a elección del admin.
   const [mostrarConfigReporte, setMostrarConfigReporte] = useState(false);
   const [seleccionReporte, setSeleccionReporte] = useState<Record<string, boolean>>({});
-  const [seccionesReporte, setSeccionesReporte] = useState({ resumen: true, detalle: true, faltantes: true });
+  const [seccionesReporte, setSeccionesReporte] = useState<SeccionesReporte>({ resumen: true, detalle: true, faltantes: true });
   const [generandoReporte, setGenerandoReporte] = useState(false);
-  const [datosReporte, setDatosReporte] = useState<{
-    encuestas: EncuestaResult[];
-    secciones: { resumen: boolean; detalle: boolean; faltantes: boolean };
-    faltantesPorEncuesta: Record<string, string[]>;
-  } | null>(null);
 
   const [encuestas, setEncuestas] = useState<EncuestaAdmin[]>([]);
   const [faltanUnidades, setFaltanUnidades] = useState<string[]>([]);
@@ -393,12 +471,13 @@ export default function AdminPage() {
   const encActual = datos.find(e => e.id === encSeleccionada);
 
   const exportarPDF = () => {
-    const style = document.createElement("style");
-    style.id = "__print_style__";
-    style.innerHTML = `@media print { body > * { display: none !important; } #resultados-pdf { display: block !important; } @page { margin: 18mm; } }`;
-    document.head.appendChild(style);
-    window.print();
-    setTimeout(() => document.getElementById("__print_style__")?.remove(), 1000);
+    if (!encActual) return;
+    construirYDescargarPDF(
+      [encActual],
+      { resumen: true, detalle: true, faltantes: true },
+      { [encActual.id]: faltanUnidades },
+      `resultados_${encActual.pregunta.substring(0, 30).replace(/\s+/g, "_")}.pdf`
+    );
   };
 
   const generarReporte = async () => {
@@ -413,26 +492,10 @@ export default function AdminPage() {
         faltantesPorEncuesta[e.id] = Array.isArray(data.faltan) ? data.faltan : [];
       }));
     }
-    setDatosReporte({ encuestas: seleccionadas, secciones: seccionesReporte, faltantesPorEncuesta });
+    construirYDescargarPDF(seleccionadas, seccionesReporte, faltantesPorEncuesta, `reporte_encuestas_${new Date().toISOString().slice(0, 10)}.pdf`);
+    setGenerandoReporte(false);
+    setMostrarConfigReporte(false);
   };
-
-  // Espera a que React pinte #reporte-pdf con los datos ya cargados antes de
-  // imprimir (setState no actualiza el DOM de forma síncrona), y limpia todo
-  // al terminar sin importar si se imprimió o se canceló el diálogo.
-  useEffect(() => {
-    if (!datosReporte) return;
-    const raf = requestAnimationFrame(() => {
-      const style = document.createElement("style");
-      style.id = "__print_style_reporte__";
-      style.innerHTML = `@media print { body > * { display: none !important; } #reporte-pdf { display: block !important; } @page { margin: 18mm; } }`;
-      document.head.appendChild(style);
-      window.print();
-      style.remove();
-      setDatosReporte(null);
-      setGenerandoReporte(false);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [datosReporte]);
 
   const exportarXLSX = () => {
     if (!encActual) return;
@@ -686,7 +749,7 @@ export default function AdminPage() {
                 )}
 
                 {encActual && (
-                  <div id="resultados-pdf">
+                  <div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                       {[
                         { label: "Votos recibidos", value: encActual.hanRespondido, color: VERDE, bg: "#f1f8e9" },
@@ -808,84 +871,6 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
-
-                <div id="reporte-pdf" style={{ display: "none" }}>
-                  {datosReporte && datosReporte.encuestas.map((enc, idx) => (
-                    <div key={enc.id} style={{ pageBreakBefore: idx === 0 ? "auto" : "always", marginBottom: 24 }}>
-                      <h2 style={{ fontSize: 17, fontWeight: 800, color: VERDE, marginBottom: 2 }}>{enc.pregunta}</h2>
-                      <p style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>{enc.activa ? "Encuesta activa" : "Encuesta cerrada"}</p>
-
-                      {datosReporte.secciones.resumen && (
-                        <div style={{ marginBottom: 20 }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
-                            {[
-                              { label: "Votos recibidos", value: enc.hanRespondido, color: VERDE, bg: "#f1f8e9" },
-                              { label: "Faltan", value: enc.faltan, color: NARANJA, bg: "#fff8f0" },
-                              { label: "Total unidades", value: enc.totalVotantes, color: "#111", bg: "#f9f9f9" },
-                            ].map(t => (
-                              <div key={t.label} style={{ background: t.bg, border: `2px solid ${t.color}30`, borderRadius: 12, padding: "14px 16px" }}>
-                                <div style={{ fontSize: 22, fontWeight: 800, color: t.color }}>{t.value}</div>
-                                <div style={{ fontSize: 12, color: "#111", marginTop: 4, fontWeight: 600 }}>{t.label}</div>
-                              </div>
-                            ))}
-                          </div>
-                          <p style={{ fontSize: 13, color: "#111", marginBottom: 10 }}>
-                            Participación: <strong>{enc.personasHanVotado}</strong> personas ·{" "}
-                            <strong>{pct(enc.hanRespondido, enc.totalVotantes)}%</strong> de las unidades
-                          </p>
-                          {Object.entries(enc.conteo).map(([op, c]) => {
-                            const p = enc.hanRespondido > 0 ? Math.round((c.votos / enc.hanRespondido) * 100) : 0;
-                            return (
-                              <div key={op} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-                                <span style={{ color: "#111" }}>{op}</span>
-                                <span style={{ fontWeight: 700, color: NARANJA }}>{c.votos} votos ({p}%)</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {datosReporte.secciones.detalle && (
-                        <div style={{ marginBottom: 20 }}>
-                          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 8 }}>Detalle de votos</h3>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                            <thead>
-                              <tr>
-                                {["#", "Nombre", "Unidad", "Opción(es)", "Fecha"].map(h => (
-                                  <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: "4px 6px", color: "#111" }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {expandirDetalleVotos(enc.detalle).map((row, i) => (
-                                <tr key={i}>
-                                  <td style={{ padding: "4px 6px", color: "#111" }}>{i + 1}</td>
-                                  <td style={{ padding: "4px 6px", color: "#111" }}>{row.nombre}</td>
-                                  <td style={{ padding: "4px 6px", color: "#111", fontWeight: 700 }}>{row.unidad}</td>
-                                  <td style={{ padding: "4px 6px", color: VERDE }}>{row.opciones.join(", ")}</td>
-                                  <td style={{ padding: "4px 6px", color: "#111" }}>{row.fecha}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {datosReporte.secciones.faltantes && (
-                        <div>
-                          <h3 style={{ fontSize: 14, fontWeight: 700, color: NARANJA, marginBottom: 8 }}>
-                            Quiénes no han votado ({(datosReporte.faltantesPorEncuesta[enc.id] || []).length} unidades)
-                          </h3>
-                          <p style={{ fontSize: 12, color: "#111" }}>
-                            {(datosReporte.faltantesPorEncuesta[enc.id] || []).length === 0
-                              ? "Todas las unidades han votado."
-                              : datosReporte.faltantesPorEncuesta[enc.id].map(u => formatUnidad(u)).join(" · ")}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
               </>
             )}
           </>
