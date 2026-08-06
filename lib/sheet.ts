@@ -84,9 +84,14 @@ export async function buscarVotante(correo: string): Promise<Votante | null> {
 // borrar residentes, propietarios, parqueadero, mascotas y bicicletas solo
 // pedían el correo, que es público/adivinable. Esta función centraliza la
 // verificación para que esas acciones también exijan el token correcto.
+//
+// Importante: si la fila de esa persona en el Sheet no tiene token asignado,
+// se niega el acceso (antes se permitía sin más, lo que dejaba esa cuenta
+// completamente abierta a cualquiera que supiera el correo). Si hay cuentas
+// legítimas sin token, hay que asignarles uno en el Sheet.
 export async function verificarToken(correo: string, token: string | undefined): Promise<boolean> {
   const votante = await buscarVotante(correo);
   if (!votante) return false;
-  if (!votante.token) return true; // cuenta sin token configurado en el Sheet
+  if (!votante.token) return false; // sin token configurado = acceso denegado, no abierto
   return !!token && token.trim().toLowerCase() === votante.token.toLowerCase();
 }

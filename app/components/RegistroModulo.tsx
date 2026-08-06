@@ -20,6 +20,9 @@ interface Registro {
   es_contacto_principal: boolean;
   inmueble_arrendado?: string;
   es_titular_arriendo?: boolean;
+  tiene_discapacidad?: string;
+  discapacidades?: string[];
+  discapacidad_otro?: string;
   unidad: string;
   numero_matricula?: string;
   direccion?: string;
@@ -35,6 +38,19 @@ interface Props {
   onVolver: () => void;
 }
 
+const DISCAPACIDADES = [
+  "Física o motora",
+  "Visual",
+  "Auditiva",
+  "Sordoceguera",
+  "Cognitiva o intelectual",
+  "Mental o psicosocial",
+  "Múltiple",
+  "Voz y habla (comunicación)",
+  "Sistémica (enfermedades crónicas)",
+  "Otra",
+];
+
 const FORM_INIT = {
   unidad: "", tipo_documento: "", numero_documento: "", nombres: "", apellidos: "",
   telefono: "", fecha_nacimiento: "", correo_contacto: "",
@@ -42,11 +58,14 @@ const FORM_INIT = {
   es_contacto_principal: false,
   inmueble_arrendado: "",
   es_titular_arriendo: false,
+  tiene_discapacidad: "",
+  discapacidades: [] as string[],
+  discapacidad_otro: "",
 };
 
 const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula"];
 const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["direccion", "ciudad"];
-const CAMPOS_REQUERIDOS_RESIDENTES: (keyof typeof FORM_INIT)[] = ["inmueble_arrendado"];
+const CAMPOS_REQUERIDOS_RESIDENTES: (keyof typeof FORM_INIT)[] = ["inmueble_arrendado", "tiene_discapacidad"];
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
@@ -99,6 +118,9 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       es_contacto_principal: !!r.es_contacto_principal,
       inmueble_arrendado: r.inmueble_arrendado || "",
       es_titular_arriendo: !!r.es_titular_arriendo,
+      tiene_discapacidad: r.tiene_discapacidad || "",
+      discapacidades: r.discapacidades || [],
+      discapacidad_otro: r.discapacidad_otro || "",
     });
     setEditandoId(r.id);
     setAceptaTratamiento(true);
@@ -142,9 +164,18 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
     ];
     const faltante = requeridos.find(k => !form[k]);
     if (faltante) { setError("Completa todos los campos obligatorios"); return; }
+    if (!esPropietarios && form.tiene_discapacidad === "Sí") {
+      if (form.discapacidades.length === 0) { setError("Selecciona al menos una discapacidad"); return; }
+      if (form.discapacidades.includes("Otra") && !form.discapacidad_otro.trim()) { setError("Especifica la discapacidad en 'Otra'"); return; }
+    }
 
     setGuardando(true); setError("");
-    const payload = { ...form, es_titular_arriendo: form.inmueble_arrendado === "Sí" && form.es_titular_arriendo };
+    const payload = {
+      ...form,
+      es_titular_arriendo: form.inmueble_arrendado === "Sí" && form.es_titular_arriendo,
+      discapacidades: form.tiene_discapacidad === "Sí" ? form.discapacidades : [],
+      discapacidad_otro: form.tiene_discapacidad === "Sí" && form.discapacidades.includes("Otra") ? form.discapacidad_otro.trim() : "",
+    };
     const url = editandoId ? `/api/${tipo}/${editandoId}` : `/api/${tipo}`;
     const res = await fetch(url, {
       method: editandoId ? "PUT" : "POST",
@@ -342,6 +373,48 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
                   <input type="checkbox" checked={form.es_titular_arriendo} onChange={e => setForm(f => ({ ...f, es_titular_arriendo: e.target.checked }))}/>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Titular del Arriendo</span>
                 </label>
+              )}
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>¿Tiene alguna discapacidad?</label>
+                <select value={form.tiene_discapacidad} onChange={e => {
+                  const val = e.target.value;
+                  setForm(f => ({ ...f, tiene_discapacidad: val, discapacidades: val === "Sí" ? f.discapacidades : [], discapacidad_otro: val === "Sí" ? f.discapacidad_otro : "" }));
+                }} style={inputStyle}>
+                  <option value="">Selecciona...</option>
+                  <option value="Sí">Sí</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+
+              {form.tiene_discapacidad === "Sí" && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>¿Cuál(es)?</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "2px solid #ddd", borderRadius: 10, padding: "12px 14px" }}>
+                    {DISCAPACIDADES.map(d => (
+                      <label key={d} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={form.discapacidades.includes(d)}
+                          onChange={e => setForm(f => ({
+                            ...f,
+                            discapacidades: e.target.checked ? [...f.discapacidades, d] : f.discapacidades.filter(x => x !== d),
+                            discapacidad_otro: d === "Otra" && !e.target.checked ? "" : f.discapacidad_otro,
+                          }))}
+                        />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>{d}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {form.discapacidades.includes("Otra") && (
+                    <input
+                      value={form.discapacidad_otro}
+                      onChange={e => setForm(f => ({ ...f, discapacidad_otro: e.target.value }))}
+                      placeholder="Especifica cuál"
+                      style={{ ...inputStyle, marginTop: 8 }}
+                    />
+                  )}
+                </div>
               )}
             </>
           )}

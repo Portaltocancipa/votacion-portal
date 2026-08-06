@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   const votante = await buscarVotante(correo.toLowerCase());
   if (!votante) return NextResponse.json({ error: "Correo no registrado" }, { status: 403 });
-  if (votante.token && token?.trim().toLowerCase() !== votante.token.toLowerCase()) {
+  if (!votante.token || token?.trim().toLowerCase() !== votante.token.toLowerCase()) {
     return NextResponse.json({ error: "Token incorrecto" }, { status: 401 });
   }
   if (!votante.habilitado) {

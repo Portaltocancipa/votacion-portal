@@ -2,6 +2,17 @@ import { getSupabase } from "@/lib/supabase";
 import { TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
 import { verificarToken } from "@/lib/sheet";
 
+// ── CHECKLIST: agregar un campo nuevo a residentes/propietarios ────────────
+// Un campo nuevo toca 4 lugares. Olvidar uno falla en silencio o revienta con
+// "could not find the column ... in the schema cache" (ya pasó una vez).
+//   1. supabase_registros.sql   -> alter table (columna real en la base)
+//   2. este archivo             -> RegistroInput, CAMPOS_POR_TABLA, y
+//                                   validarRegistro() si el campo es obligatorio
+//   3. RegistroModulo.tsx       -> interface Registro, FORM_INIT, render del
+//                                   input/checkbox, iniciarEdicion(), y
+//                                   cualquier validación extra en guardar()
+//   4. app/admin/page.tsx       -> interface RegistroAdmin, columna en la
+//                                   tabla y en exportarRegistrosXLSX()
 export type TablaRegistro = "residentes" | "propietarios";
 
 export interface RegistroInput {
@@ -19,6 +30,9 @@ export interface RegistroInput {
   es_contacto_principal?: boolean;
   inmueble_arrendado?: string;
   es_titular_arriendo?: boolean;
+  tiene_discapacidad?: string;
+  discapacidades?: string[];
+  discapacidad_otro?: string;
   unidad?: string;
 }
 
@@ -34,7 +48,7 @@ const CAMPOS_COMUNES = [
   "correo_contacto", "es_contacto_principal", "unidad",
 ] as const;
 const CAMPOS_POR_TABLA: Record<TablaRegistro, readonly string[]> = {
-  residentes: [...CAMPOS_COMUNES, "inmueble_arrendado", "es_titular_arriendo"],
+  residentes: [...CAMPOS_COMUNES, "inmueble_arrendado", "es_titular_arriendo", "tiene_discapacidad", "discapacidades", "discapacidad_otro"],
   propietarios: [...CAMPOS_COMUNES, "direccion"],
 };
 
@@ -68,6 +82,11 @@ export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInpu
     if (!body.inmueble_arrendado) return "Indica si el inmueble está arrendado";
     if (body.es_titular_arriendo && body.inmueble_arrendado !== "Sí") {
       return "El titular del arriendo solo aplica si el inmueble está arrendado";
+    }
+    if (!body.tiene_discapacidad) return "Indica si tiene alguna discapacidad";
+    if (body.tiene_discapacidad === "Sí") {
+      if (!body.discapacidades || body.discapacidades.length === 0) return "Selecciona al menos una discapacidad";
+      if (body.discapacidades.includes("Otra") && !body.discapacidad_otro) return "Especifica la discapacidad en 'Otra'";
     }
   }
   return null;

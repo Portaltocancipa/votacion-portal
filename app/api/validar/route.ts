@@ -31,7 +31,10 @@ export async function POST(req: NextRequest) {
     const votante = await buscarVotante(correoNorm);
     if (!votante) return NextResponse.json({ encontrado: false });
 
-    if (votante.token && token?.trim().toLowerCase() !== votante.token.toLowerCase()) {
+    // Sin token configurado en el Sheet para esta persona = acceso denegado
+    // (antes se dejaba pasar sin más, dejando la cuenta abierta a cualquiera
+    // que supiera el correo).
+    if (!votante.token || token?.trim().toLowerCase() !== votante.token.toLowerCase()) {
       const intentos = (intento?.intentos || 0) + 1;
       const bloqueado_hasta = intentos >= MAX_INTENTOS
         ? new Date(Date.now() + BLOQUEO_MINUTOS * 60000).toISOString()

@@ -24,6 +24,9 @@ alter table residentes add column if not exists ciudad text;
 -- Campos exclusivos de Residentes (Propietarios no los tiene)
 alter table residentes add column if not exists inmueble_arrendado text;
 alter table residentes add column if not exists es_titular_arriendo boolean not null default false;
+alter table residentes add column if not exists tiene_discapacidad text;
+alter table residentes add column if not exists discapacidades text[];
+alter table residentes add column if not exists discapacidad_otro text;
 
 create table if not exists propietarios (
   id uuid primary key default gen_random_uuid(),
