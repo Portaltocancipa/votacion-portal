@@ -4,12 +4,13 @@ import RegistroModulo from "./components/RegistroModulo";
 import ParqueaderoModulo from "./components/ParqueaderoModulo";
 import MascotasModulo from "./components/MascotasModulo";
 import BicicletasModulo from "./components/BicicletasModulo";
+import MudanzaModulo from "./components/MudanzaModulo";
 
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const VERDE_LIGHT = "#2E7D32";
 
-type Fase = "bienvenida" | "menu" | "encuestas" | "residentes" | "propietarios" | "parqueadero" | "gracias";
+type Fase = "bienvenida" | "menu" | "encuestas" | "residentes" | "propietarios" | "parqueadero" | "mudanza" | "gracias";
 
 interface Votante {
   nombre: string;
@@ -294,6 +295,14 @@ export default function Home() {
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Registra los vehículos de tu unidad</p>
                   </div>
                 </button>
+
+                <button onClick={() => setFase("mudanza")}
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Mudanza / Trasteo</p>
+                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Preregistra tu mudanza o la salida/ingreso de un objeto grande</p>
+                  </div>
+                </button>
               </div>
             </>
           )}
@@ -312,6 +321,10 @@ export default function Home() {
 
           {fase === "parqueadero" && votante && (
             <ParqueaderoModulo correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+          )}
+
+          {fase === "mudanza" && votante && (
+            <MudanzaModulo correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
           )}
 
           {fase === "encuestas" && votante && (
