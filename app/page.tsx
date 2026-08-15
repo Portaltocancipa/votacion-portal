@@ -10,7 +10,15 @@ const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const VERDE_LIGHT = "#2E7D32";
 
-type Fase = "bienvenida" | "menu" | "encuestas" | "residentes" | "propietarios" | "parqueadero" | "mudanza" | "gracias";
+type Fase = "bienvenida" | "menu" | "encuestas" | "registro" | "mudanza" | "gracias";
+type RegistroTab = "residentes" | "propietarios" | "vehiculos" | "bicicletas";
+
+const REGISTRO_TABS: { key: RegistroTab; label: string }[] = [
+  { key: "residentes", label: "Residentes" },
+  { key: "propietarios", label: "Propietarios" },
+  { key: "vehiculos", label: "Vehículos" },
+  { key: "bicicletas", label: "Bicicletas" },
+];
 
 interface Votante {
   nombre: string;
@@ -43,6 +51,7 @@ export default function Home() {
   const [fase, setFase] = useState<Fase>("bienvenida");
   const [votante, setVotante] = useState<Votante | null>(null);
   const [encuestas, setEncuestas] = useState<Encuesta[]>([]);
+  const [registroTab, setRegistroTab] = useState<RegistroTab>("residentes");
 
   // Refresca la lista de encuestas activas contra el servidor. Se usa tanto
   // al iniciar sesión como en el polling periódico de abajo, para que si el
@@ -272,34 +281,18 @@ export default function Home() {
                   </div>
                 </button>
 
-                <button onClick={() => setFase("residentes")}
+                <button onClick={() => setFase("registro")}
                   style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Registro y actualización de residentes</p>
-                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Mantén al día quiénes viven en tu unidad</p>
-                  </div>
-                </button>
-
-                <button onClick={() => setFase("propietarios")}
-                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Registro y actualización de propietarios</p>
-                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Mantén al día los propietarios de tu unidad</p>
-                  </div>
-                </button>
-
-                <button onClick={() => setFase("parqueadero")}
-                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Parqueadero</p>
-                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Registra los vehículos de tu unidad</p>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Registro de información</p>
+                    <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Residentes, propietarios, vehículos y bicicletas de tu unidad</p>
                   </div>
                 </button>
 
                 <button onClick={() => setFase("mudanza")}
                   style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: "pointer" }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Mudanza / Trasteo</p>
+                    <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Mudanzas</p>
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Preregistra tu mudanza o la salida/ingreso de un objeto grande</p>
                   </div>
                 </button>
@@ -307,20 +300,49 @@ export default function Home() {
             </>
           )}
 
-          {fase === "residentes" && votante && (
+          {fase === "registro" && votante && (
             <>
-              <RegistroModulo tipo="residentes" titulo="Registro y actualización de residentes" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
-              <MascotasModulo correo={votante.correo} unidades={votante.unidades} token={token}/>
-              <BicicletasModulo correo={votante.correo} unidades={votante.unidades} token={token}/>
+              <button onClick={() => setFase("menu")} style={{ background: "none", border: "none", color: VERDE, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 16 }}>
+                Volver al menú
+              </button>
+
+              <p style={{ fontSize: 11, fontWeight: 800, color: NARANJA, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+                Registro de información
+              </p>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                {REGISTRO_TABS.map(t => (
+                  <button key={t.key} onClick={() => setRegistroTab(t.key)}
+                    style={{
+                      flex: "1 1 auto", background: registroTab === t.key ? VERDE : "#fff",
+                      color: registroTab === t.key ? "#fff" : "#111",
+                      border: `2px solid ${registroTab === t.key ? VERDE : "#e5e7eb"}`,
+                      borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                    }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {registroTab === "residentes" && (
+                <>
+                  <RegistroModulo tipo="residentes" titulo="Registro y actualización de residentes" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+                  <MascotasModulo correo={votante.correo} unidades={votante.unidades} token={token}/>
+                </>
+              )}
+
+              {registroTab === "propietarios" && (
+                <RegistroModulo tipo="propietarios" titulo="Registro y actualización de propietarios" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+              )}
+
+              {registroTab === "vehiculos" && (
+                <ParqueaderoModulo correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+              )}
+
+              {registroTab === "bicicletas" && (
+                <BicicletasModulo correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
+              )}
             </>
-          )}
-
-          {fase === "propietarios" && votante && (
-            <RegistroModulo tipo="propietarios" titulo="Registro y actualización de propietarios" correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
-          )}
-
-          {fase === "parqueadero" && votante && (
-            <ParqueaderoModulo correo={votante.correo} unidades={votante.unidades} token={token} onVolver={() => setFase("menu")}/>
           )}
 
           {fase === "mudanza" && votante && (

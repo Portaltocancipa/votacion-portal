@@ -19,6 +19,7 @@ interface Props {
   correo: string;
   unidades: string[];
   token: string;
+  onVolver?: () => void;
 }
 
 const FORM_INIT = { unidad: "", color: "", marca: "", en_bicicletero: "", numero_asignado: "" };
@@ -27,7 +28,7 @@ const CAMPOS_REQUERIDOS: (keyof typeof FORM_INIT)[] = ["unidad", "color", "marca
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
 const labelStyle = { fontSize: 12, fontWeight: 700, color: "#111", display: "block", marginBottom: 6 };
 
-export default function BicicletasModulo({ correo, unidades, token }: Props) {
+export default function BicicletasModulo({ correo, unidades, token, onVolver }: Props) {
   const [registros, setRegistros] = useState<Bicicleta[]>([]);
   const [cargando, setCargando] = useState(true);
   const [verTodos, setVerTodos] = useState(false);
@@ -125,7 +126,12 @@ export default function BicicletasModulo({ correo, unidades, token }: Props) {
   const visibles = verTodos ? registros : registros.slice(0, 3);
 
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 18, marginTop: 16 }}>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 18, marginTop: onVolver ? 0 : 16 }}>
+      {onVolver && (
+        <button onClick={onVolver} style={{ background: "none", border: "none", color: VERDE, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 16 }}>
+          Volver al menú
+        </button>
+      )}
       <h3 style={{ fontSize: 15, fontWeight: 800, color: VERDE, margin: "0 0 4px" }}>Bicicletas</h3>
       <p style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>Registra las bicicletas de tu unidad.</p>
 
