@@ -11,13 +11,40 @@ import BicicletasTab from "./components/BicicletasTab";
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 
-type Tab = "resultados" | "encuestas" | "registros" | "contactos" | "parqueaderos" | "mascotas" | "bicicletas";
+type Seccion = "votaciones" | "registros";
+type VotacionesTab = "resultados" | "encuestas";
+type RegistrosSubTab = "registros" | "contactos" | "parqueaderos" | "mascotas" | "bicicletas";
+
+const SECCIONES: { key: Seccion; label: string }[] = [
+  { key: "votaciones", label: "Votaciones" },
+  { key: "registros", label: "Registros" },
+];
+
+const VOTACIONES_TABS: { key: VotacionesTab; label: string }[] = [
+  { key: "resultados", label: "Resultados" },
+  { key: "encuestas", label: "Encuestas" },
+];
+
+const REGISTROS_TABS: { key: RegistrosSubTab; label: string }[] = [
+  { key: "registros", label: "Registros" },
+  { key: "contactos", label: "Contactos" },
+  { key: "parqueaderos", label: "Parqueaderos" },
+  { key: "mascotas", label: "Mascotas" },
+  { key: "bicicletas", label: "Bicicletas" },
+];
+
+const tabPillStyle = (activo: boolean) => ({
+  padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" as const,
+  background: activo ? VERDE : "#fff", color: activo ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+});
 
 export default function AdminPage() {
   const [key, setKey] = useState("");
   const [autenticado, setAutenticado] = useState(false);
   const [errorAuth, setErrorAuth] = useState("");
-  const [tab, setTab] = useState<Tab>("resultados");
+  const [seccion, setSeccion] = useState<Seccion>("votaciones");
+  const [votacionesTab, setVotacionesTab] = useState<VotacionesTab>("resultados");
+  const [registrosSubTab, setRegistrosSubTab] = useState<RegistrosSubTab>("registros");
   const [registrosTipo, setRegistrosTipo] = useState<"residentes" | "propietarios">("residentes");
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -58,7 +85,7 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "system-ui", padding: "24px 16px" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
 
         <div style={{ background: VERDE, borderRadius: 14, padding: "20px 24px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `4px solid ${NARANJA}` }}>
           <div>
@@ -71,23 +98,50 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-          {([["resultados", "Resultados"], ["encuestas", "Encuestas"], ["registros", "Registros"], ["contactos", "Contactos"], ["parqueaderos", "Parqueaderos"], ["mascotas", "Mascotas"], ["bicicletas", "Bicicletas"]] as const).map(([t, label]) => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ padding: "10px 22px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
-                background: tab === t ? VERDE : "#fff", color: tab === t ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: 200, flexShrink: 0 }}>
+            {SECCIONES.map(s => (
+              <button key={s.key} onClick={() => setSeccion(s.key)}
+                style={{ textAlign: "left", padding: "13px 18px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  background: seccion === s.key ? VERDE : "#fff", color: seccion === s.key ? "#fff" : "#555", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
 
-        {tab === "resultados" && <ResultadosTab adminHeaders={adminHeaders} reloadKey={reloadKey}/>}
-        {tab === "encuestas" && <EncuestasTab adminHeaders={adminHeaders} reloadKey={reloadKey} onCambio={() => setReloadKey(k => k + 1)}/>}
-        {tab === "registros" && <RegistrosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo}/>}
-        {tab === "contactos" && <ContactosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo}/>}
-        {tab === "parqueaderos" && <ParqueaderosTab adminHeaders={adminHeaders}/>}
-        {tab === "mascotas" && <MascotasTab adminHeaders={adminHeaders}/>}
-        {tab === "bicicletas" && <BicicletasTab adminHeaders={adminHeaders}/>}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {seccion === "votaciones" && (
+              <>
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                  {VOTACIONES_TABS.map(t => (
+                    <button key={t.key} onClick={() => setVotacionesTab(t.key)} style={tabPillStyle(votacionesTab === t.key)}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                {votacionesTab === "resultados" && <ResultadosTab adminHeaders={adminHeaders} reloadKey={reloadKey}/>}
+                {votacionesTab === "encuestas" && <EncuestasTab adminHeaders={adminHeaders} reloadKey={reloadKey} onCambio={() => setReloadKey(k => k + 1)}/>}
+              </>
+            )}
+
+            {seccion === "registros" && (
+              <>
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                  {REGISTROS_TABS.map(t => (
+                    <button key={t.key} onClick={() => setRegistrosSubTab(t.key)} style={tabPillStyle(registrosSubTab === t.key)}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                {registrosSubTab === "registros" && <RegistrosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo}/>}
+                {registrosSubTab === "contactos" && <ContactosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo}/>}
+                {registrosSubTab === "parqueaderos" && <ParqueaderosTab adminHeaders={adminHeaders}/>}
+                {registrosSubTab === "mascotas" && <MascotasTab adminHeaders={adminHeaders}/>}
+                {registrosSubTab === "bicicletas" && <BicicletasTab adminHeaders={adminHeaders}/>}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
