@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { formatUnidad } from "@/lib/unidad";
+import { esDomingoOFestivo, rangoHorarioPermitido } from "@/lib/festivosColombia";
 import PreregistroNota from "./PreregistroNota";
 
 const VERDE = "#1B5E20";
@@ -15,6 +16,7 @@ interface Mudanza {
   tipo_movimiento: "ingreso" | "salida";
   es_propietario: boolean;
   fecha_mudanza: string;
+  hora_inicio: string;
   created_at: string;
 }
 
@@ -36,6 +38,7 @@ const FORM_INIT = {
   tipo_movimiento: "" as "" | "ingreso" | "salida",
   es_propietario: "" as "" | "si" | "no",
   fecha_mudanza: "",
+  hora_inicio: "",
 };
 
 const inputStyle = { width: "100%", border: "2px solid #ddd", borderRadius: 10, padding: "11px 14px", fontSize: 13, outline: "none", boxSizing: "border-box" as const, color: "#111" };
@@ -80,6 +83,13 @@ export default function MudanzaModulo({ correo, unidades, token, onVolver }: Pro
     if (!form.tipo_movimiento) { setError("Selecciona si es ingreso o salida"); return; }
     if (!form.es_propietario) { setError("Indica si eres el propietario"); return; }
     if (!form.fecha_mudanza) { setError("Indica la fecha de la mudanza"); return; }
+    if (esDomingoOFestivo(form.fecha_mudanza)) { setError("No se permiten mudanzas los domingos ni festivos. Elige otro día."); return; }
+    if (!form.hora_inicio) { setError("Indica la hora de inicio de la mudanza"); return; }
+    const rango = rangoHorarioPermitido(form.fecha_mudanza);
+    if (form.hora_inicio < rango.min || form.hora_inicio > rango.max) {
+      setError(`La hora de inicio debe estar entre ${rango.min} y ${rango.max}`);
+      return;
+    }
 
     setGuardando(true); setError("");
     const res = await fetch("/api/mudanzas", {
@@ -93,6 +103,7 @@ export default function MudanzaModulo({ correo, unidades, token, onVolver }: Pro
         tipo_movimiento: form.tipo_movimiento,
         es_propietario: form.es_propietario === "si",
         fecha_mudanza: form.fecha_mudanza,
+        hora_inicio: form.hora_inicio,
       }),
     });
     const data = await res.json();
@@ -158,7 +169,7 @@ export default function MudanzaModulo({ correo, unidades, token, onVolver }: Pro
                 {TIPOS_FORMATO.find(t => t.valor === r.tipo_formato)?.label} · {r.tipo_movimiento === "ingreso" ? "Ingreso" : "Salida"} · {formatUnidad(r.unidad)}
               </p>
               <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>
-                Fecha de mudanza: {r.fecha_mudanza}
+                Fecha de mudanza: {r.fecha_mudanza} · Hora de inicio: {r.hora_inicio?.slice(0, 5) || "—"}
               </p>
             </div>
           ))}
@@ -184,8 +195,29 @@ export default function MudanzaModulo({ correo, unidades, token, onVolver }: Pro
             </div>
             <div>
               <label style={labelStyle}>Fecha de la mudanza</label>
-              <input type="date" value={form.fecha_mudanza} onChange={e => setForm(f => ({ ...f, fecha_mudanza: e.target.value }))} style={inputStyle}/>
+              <input type="date" value={form.fecha_mudanza} onChange={e => {
+                const val = e.target.value;
+                if (val && esDomingoOFestivo(val)) {
+                  setError("No se permiten mudanzas los domingos ni festivos. Elige otro día.");
+                  return;
+                }
+                setError("");
+                setForm(f => ({ ...f, fecha_mudanza: val, hora_inicio: "" }));
+              }} style={inputStyle}/>
             </div>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Hora de inicio de la mudanza</label>
+            <input type="time" value={form.hora_inicio} disabled={!form.fecha_mudanza}
+              min={rangoHorarioPermitido(form.fecha_mudanza).min} max={rangoHorarioPermitido(form.fecha_mudanza).max}
+              onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))}
+              style={{ ...inputStyle, opacity: form.fecha_mudanza ? 1 : 0.6 }}/>
+            <p style={{ fontSize: 11, color: "#666", margin: "6px 0 0" }}>
+              {form.fecha_mudanza
+                ? `Horario permitido: ${rangoHorarioPermitido(form.fecha_mudanza).min} a ${rangoHorarioPermitido(form.fecha_mudanza).max}`
+                : "Selecciona primero la fecha"}
+            </p>
           </div>
 
           <div style={{ marginBottom: 14 }}>
