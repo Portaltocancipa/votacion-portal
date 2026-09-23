@@ -8,6 +8,10 @@ const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 const VERDE_LIGHT = "#2E7D32";
 
+// Módulo pausado a pedido del usuario: muestra un aviso en vez del formulario
+// mientras se sigue trabajando en él. Cambiar a false para reactivarlo.
+const EN_CONSTRUCCION = true;
+
 interface Mudanza {
   id: string;
   numero: number;
@@ -116,6 +120,22 @@ export default function MudanzaModulo({ correo, unidades, token, onVolver }: Pro
     }
     setGuardando(false);
   };
+
+  if (EN_CONSTRUCCION) {
+    return (
+      <>
+        <button onClick={onVolver} style={{ background: "none", border: "none", color: VERDE, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 16 }}>
+          Volver al menú
+        </button>
+        <div style={{ background: "#fff8e1", border: "2px solid #f9a825", borderRadius: 12, padding: "20px 18px", textAlign: "center" }}>
+          <p style={{ fontSize: 14, fontWeight: 800, color: "#8d6e00", margin: "0 0 6px" }}>Estamos trabajando en este módulo</p>
+          <p style={{ fontSize: 13, color: "#333", margin: 0, lineHeight: 1.6 }}>
+            El registro de mudanzas estará disponible próximamente. Por ahora no está habilitado.
+          </p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
