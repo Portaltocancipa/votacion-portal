@@ -14,6 +14,42 @@ export interface Votante {
   token: string;
 }
 
+// Parser de una fila CSV que respeta campos entre comillas (incluida una
+// coma literal dentro del campo, ej. "García, Juan") y comillas escapadas
+// ("") dentro de un campo entre comillas. Un split(",") simple corría las
+// columnas de esa fila cuando un nombre o unidad traía una coma, pudiendo
+// corromper su token/habilitado/unidad.
+function parseCsvLine(line: string): string[] {
+  const cols: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      cols.push(cur.trim());
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
 export async function getAllUnidades(): Promise<string[]> {
   const sheetId = process.env.GOOGLE_SHEET_ID;
   if (!sheetId) throw new Error("Falta GOOGLE_SHEET_ID");
@@ -27,7 +63,7 @@ export async function getAllUnidades(): Promise<string[]> {
 
   const unidades = new Set<string>();
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+    const cols = parseCsvLine(lines[i]);
     const [, unidad] = cols;
     if (unidad) unidades.add(unidad);
   }
@@ -52,7 +88,7 @@ export async function buscarVotante(correo: string): Promise<Votante | null> {
   let token = "";
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+    const cols = parseCsvLine(lines[i]);
     // Columnas: ID, Unidad, Nombre, Correo, Cantidad, Habilitado, Token
     // La columna "Cantidad" en el Sheet se llena con el total de unidades que
     // representa ese correo, repetido en cada una de sus filas (no "1 por

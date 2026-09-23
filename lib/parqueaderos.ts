@@ -74,8 +74,12 @@ export async function actualizarParqueadero(id: string, correo: string, input: P
   if (!existente) throw new Error("Registro no encontrado");
   if (existente.correo.toLowerCase() !== correo.toLowerCase()) throw new Error("No autorizado para editar este registro");
 
-  const { correo: correoInput, ...campos } = input;
-  void correoInput;
+  // input llega tal cual del body del PUT, que también trae correo y token
+  // (usados arriba para autenticar). Si se cuelan al update, Postgres lo
+  // rechaza con "could not find the column 'token'/'correo' in the schema
+  // cache" porque esas tablas no tienen esas columnas.
+  const { correo: correoInput, token: tokenInput, ...campos } = input as Partial<ParqueaderoInput> & { token?: string };
+  void correoInput; void tokenInput;
   const { data, error } = await supabase.from("parqueaderos").update(campos).eq("id", id).select().single();
   if (error) throw new Error(error.message);
   return data;

@@ -39,9 +39,10 @@ interface Props {
   adminHeaders: () => Record<string, string>;
   registrosTipo: "residentes" | "propietarios";
   setRegistrosTipo: (t: "residentes" | "propietarios") => void;
+  reloadKey?: number;
 }
 
-export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistrosTipo }: Props) {
+export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistrosTipo, reloadKey }: Props) {
   const [registros, setRegistros] = useState<RegistroAdmin[]>([]);
   const [cargando, setCargando] = useState(false);
   const [verEliminados, setVerEliminados] = useState(false);
@@ -54,7 +55,7 @@ export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistros
     setCargando(false);
   }, [adminHeaders]);
 
-  useEffect(() => { cargar(registrosTipo, verEliminados); }, [cargar, registrosTipo, verEliminados]);
+  useEffect(() => { cargar(registrosTipo, verEliminados); }, [cargar, registrosTipo, verEliminados, reloadKey]);
 
   const restaurar = async (id: string) => {
     await fetch(`/api/admin/registros/${id}`, {

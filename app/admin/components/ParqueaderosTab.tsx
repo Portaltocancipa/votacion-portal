@@ -20,7 +20,7 @@ interface ParqueaderoAdmin {
   created_at: string;
 }
 
-export default function ParqueaderosTab({ adminHeaders }: { adminHeaders: () => Record<string, string> }) {
+export default function ParqueaderosTab({ adminHeaders, reloadKey }: { adminHeaders: () => Record<string, string>; reloadKey?: number }) {
   const [parqueaderos, setParqueaderos] = useState<ParqueaderoAdmin[]>([]);
   const [cargando, setCargando] = useState(false);
   const [verEliminados, setVerEliminados] = useState(false);
@@ -33,7 +33,7 @@ export default function ParqueaderosTab({ adminHeaders }: { adminHeaders: () => 
     setCargando(false);
   }, [adminHeaders]);
 
-  useEffect(() => { cargar(verEliminados); }, [cargar, verEliminados]);
+  useEffect(() => { cargar(verEliminados); }, [cargar, verEliminados, reloadKey]);
 
   const restaurar = async (id: string) => {
     await fetch(`/api/admin/parqueaderos/${id}`, { method: "PUT", headers: adminHeaders() });

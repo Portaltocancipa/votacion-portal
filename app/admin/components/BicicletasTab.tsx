@@ -17,7 +17,7 @@ interface BicicletaAdmin {
   created_at: string;
 }
 
-export default function BicicletasTab({ adminHeaders }: { adminHeaders: () => Record<string, string> }) {
+export default function BicicletasTab({ adminHeaders, reloadKey }: { adminHeaders: () => Record<string, string>; reloadKey?: number }) {
   const [bicicletas, setBicicletas] = useState<BicicletaAdmin[]>([]);
   const [cargando, setCargando] = useState(false);
   const [verEliminados, setVerEliminados] = useState(false);
@@ -30,7 +30,7 @@ export default function BicicletasTab({ adminHeaders }: { adminHeaders: () => Re
     setCargando(false);
   }, [adminHeaders]);
 
-  useEffect(() => { cargar(verEliminados); }, [cargar, verEliminados]);
+  useEffect(() => { cargar(verEliminados); }, [cargar, verEliminados, reloadKey]);
 
   const restaurar = async (id: string) => {
     await fetch(`/api/admin/bicicletas/${id}`, { method: "PUT", headers: adminHeaders() });

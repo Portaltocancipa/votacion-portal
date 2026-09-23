@@ -39,9 +39,13 @@ export async function crearBicicleta(input: BicicletaInput, token: string | unde
   if (!(await verificarToken(input.correo, token))) throw new Error("Token incorrecto");
 
   const supabase = getSupabase();
+  // El body del POST trae token además de los campos de BicicletaInput; no
+  // se inserta como columna (no existe en la tabla), solo se nombran los
+  // campos reales.
+  const { correo, unidad, color, marca, en_bicicletero, numero_asignado } = input;
   const { data, error } = await supabase
     .from("bicicletas")
-    .insert({ ...input, correo: input.correo.toLowerCase() })
+    .insert({ correo: correo.toLowerCase(), unidad, color, marca, en_bicicletero, numero_asignado })
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -57,8 +61,12 @@ export async function actualizarBicicleta(id: string, correo: string, input: Par
   if (!existente) throw new Error("Registro no encontrado");
   if (existente.correo.toLowerCase() !== correo.toLowerCase()) throw new Error("No autorizado para editar este registro");
 
-  const { correo: correoInput, ...campos } = input;
-  void correoInput;
+  // input llega tal cual del body del PUT, que también trae correo y token
+  // (usados arriba para autenticar). Si se cuelan al update, Postgres lo
+  // rechaza con "could not find the column 'token'/'correo' in the schema
+  // cache" porque la tabla no tiene esas columnas.
+  const { correo: correoInput, token: tokenInput, ...campos } = input as Partial<BicicletaInput> & { token?: string };
+  void correoInput; void tokenInput;
   const { data, error } = await supabase.from("bicicletas").update(campos).eq("id", id).select().single();
   if (error) throw new Error(error.message);
   return data;
