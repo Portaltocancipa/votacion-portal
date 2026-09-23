@@ -52,6 +52,7 @@ export default function Home() {
   const [votante, setVotante] = useState<Votante | null>(null);
   const [encuestas, setEncuestas] = useState<Encuesta[]>([]);
   const [registroTab, setRegistroTab] = useState<RegistroTab>("residentes");
+  const [verificandoRegistros, setVerificandoRegistros] = useState(false);
 
   // Refresca la lista de encuestas activas contra el servidor. Se usa tanto
   // al iniciar sesión como en el polling periódico de abajo, para que si el
@@ -121,7 +122,34 @@ export default function Home() {
     setFase("bienvenida"); setCorreo(""); setToken(""); setVotante(null); setEncuestas([]);
   };
 
-  const abrirVotaciones = () => {
+  // Antes de dejar votar, exige que la unidad tenga al menos un residente y
+  // un propietario registrados (pre-registro vivo, no solo el padrón de
+  // votantes). Reutiliza los mismos GET que ya alimentan "Registro de
+  // información", así que no hace falta una ruta nueva.
+  const abrirVotaciones = async () => {
+    if (!votante) return;
+    setVerificandoRegistros(true);
+    try {
+      const [resResidentes, resPropietarios] = await Promise.all([
+        fetch(`/api/residentes?correo=${encodeURIComponent(votante.correo)}`),
+        fetch(`/api/propietarios?correo=${encodeURIComponent(votante.correo)}`),
+      ]);
+      const residentes = await resResidentes.json();
+      const propietarios = await resPropietarios.json();
+      const tieneResidente = Array.isArray(residentes) && residentes.length > 0;
+      const tienePropietario = Array.isArray(propietarios) && propietarios.length > 0;
+      if (!tieneResidente || !tienePropietario) {
+        setPopupMsg("Antes de votar usted debe actualizar los datos de propietario y residente. Vaya a \"Registro de información\" y complete los que falten.");
+        setPopup(true);
+        return;
+      }
+    } catch {
+      setPopupMsg("No se pudo verificar tu información de residente/propietario. Intenta de nuevo.");
+      setPopup(true);
+      return;
+    } finally {
+      setVerificandoRegistros(false);
+    }
     if (encuestas.length > 0 && encuestas.every(e => e.respondida)) setFase("gracias");
     else setFase("encuestas");
   };
@@ -269,13 +297,15 @@ export default function Home() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <button onClick={votante.puedeVotar ? abrirVotaciones : undefined} disabled={!votante.puedeVotar}
-                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: votante.puedeVotar ? "#fff" : "#f5f5f5", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: votante.puedeVotar ? "pointer" : "not-allowed", opacity: votante.puedeVotar ? 1 : 0.6 }}>
+                <button onClick={votante.puedeVotar && !verificandoRegistros ? abrirVotaciones : undefined} disabled={!votante.puedeVotar || verificandoRegistros}
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", background: votante.puedeVotar ? "#fff" : "#f5f5f5", border: "2px solid #e5e7eb", borderRadius: 14, padding: "18px 20px", cursor: votante.puedeVotar && !verificandoRegistros ? "pointer" : "not-allowed", opacity: votante.puedeVotar ? (verificandoRegistros ? 0.7 : 1) : 0.6 }}>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: 0 }}>Votaciones</p>
                     <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>
                       {!votante.puedeVotar
                         ? "No estás habilitado(a) para votar. Comunícate con la administradora."
+                        : verificandoRegistros
+                        ? "Verificando tu información..."
                         : pendientesVotacion > 0 ? `${pendientesVotacion} votación(es) pendiente(s)` : "Participa en las votaciones activas"}
                     </p>
                   </div>
