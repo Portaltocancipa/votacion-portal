@@ -11,20 +11,14 @@ import BicicletasTab from "./components/BicicletasTab";
 const VERDE = "#1B5E20";
 const NARANJA = "#E65100";
 
-type Seccion = "votaciones" | "registros" | "control-parqueaderos";
+type Seccion = "votaciones" | "registros";
 type VotacionesTab = "resultados" | "encuestas";
 type RegistrosSubTab = "registros" | "contactos" | "parqueaderos" | "mascotas" | "bicicletas";
 
 const SECCIONES: { key: Seccion; label: string }[] = [
   { key: "votaciones", label: "Votaciones" },
   { key: "registros", label: "Registros" },
-  { key: "control-parqueaderos", label: "Control Parqueaderos" },
 ];
-
-// Dashboard de tickets/facturación del parqueadero (Artifact aparte, con
-// datos en vivo desde Google Drive) — no confundir con "Parqueaderos" en
-// Registros, que es solo el registro de vehículos por unidad.
-const CONTROL_PARQUEADEROS_URL = "https://claude.ai/artifact/N292tZDEehLwuXenVQpYZp";
 
 const VOTACIONES_TABS: { key: VotacionesTab; label: string }[] = [
   { key: "resultados", label: "Resultados" },
@@ -153,22 +147,6 @@ export default function AdminPage() {
                 {registrosSubTab === "mascotas" && <MascotasTab adminHeaders={adminHeaders} reloadKey={reloadKey}/>}
                 {registrosSubTab === "bicicletas" && <BicicletasTab adminHeaders={adminHeaders} reloadKey={reloadKey}/>}
               </>
-            )}
-
-            {seccion === "control-parqueaderos" && (
-              <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-                <p style={{ fontSize: 12, color: "#666", margin: "0 0 12px" }}>
-                  Datos en vivo desde Google Drive.{" "}
-                  <a href={CONTROL_PARQUEADEROS_URL} target="_blank" rel="noopener noreferrer" style={{ color: VERDE, fontWeight: 700 }}>
-                    Si no carga aquí abajo, ábrelo directo en una pestaña nueva.
-                  </a>
-                </p>
-                <iframe
-                  src={CONTROL_PARQUEADEROS_URL}
-                  title="Control Parqueaderos"
-                  style={{ width: "100%", height: "85vh", border: "none", borderRadius: 10 }}
-                />
-              </div>
             )}
           </div>
         </div>
