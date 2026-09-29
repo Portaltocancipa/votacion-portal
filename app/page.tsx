@@ -179,9 +179,9 @@ export default function Home() {
       {popupVoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "36px 28px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: VERDE, marginBottom: 10 }}>¡Hemos recibido su voto!</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: VERDE, marginBottom: 10 }}>¡Gracias por votar!</h2>
             <p style={{ fontSize: 14, color: "#111", lineHeight: 1.6, marginBottom: 28 }}>
-              Su respuesta ha sido registrada exitosamente. Gracias por participar.
+              Su respuesta ha sido registrada exitosamente. Recuerde actualizar su información de residente y propietario en &quot;Registro de información&quot; si aún no lo ha hecho.
             </p>
             <button
               onClick={() => { setPopupVoto(false); setFase("menu"); }}
@@ -419,9 +419,9 @@ export default function Home() {
 
           {fase === "gracias" && (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: VERDE, marginBottom: 12 }}>¡Gracias por participar!</h2>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: VERDE, marginBottom: 12 }}>¡Gracias por votar!</h2>
               <p style={{ fontSize: 15, color: "#111", lineHeight: 1.6, marginBottom: 24 }}>
-                Tus respuestas han sido registradas exitosamente.
+                Tus respuestas han sido registradas exitosamente. Recuerda actualizar tu información de residente y propietario en &quot;Registro de información&quot; si aún no lo has hecho.
               </p>
               <button onClick={() => setFase("menu")}
                 style={{ background: NARANJA, color: "#fff", border: "none", borderRadius: 10, padding: "13px 32px", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
