@@ -73,7 +73,7 @@ export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistros
     { header: "#", render: (_r, i) => i + 1 },
     {
       header: "Origen", render: r => r.precargado
-        ? <span style={{ background: "#fff3e0", color: NARANJA, border: `1px solid ${NARANJA}40`, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Precargado</span>
+        ? <span style={{ background: "#fff3e0", color: NARANJA, border: `1px solid ${NARANJA}40`, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Incompleto</span>
         : <span style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Diligenciado</span>,
     },
     { header: "Unidad", render: r => r.unidad ? formatUnidad(r.unidad) : "—" },
@@ -100,7 +100,7 @@ export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistros
   const exportarXLSX = () => {
     const filas = registros.map((r, i) => ({
       "#": i + 1,
-      Origen: r.precargado ? "Precargado" : "Diligenciado",
+      Origen: r.precargado ? "Incompleto" : "Diligenciado",
       Unidad: r.unidad ? formatUnidad(r.unidad) : "",
       Nombres: r.nombres,
       Apellidos: r.apellidos,
@@ -134,12 +134,12 @@ export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistros
   const resumen = verEliminados ? [] : esPropietarios
     ? [
         { label: "Total propietarios", value: registros.length },
-        { label: "Precargados (sin diligenciar)", value: precargados, color: NARANJA },
+        { label: "Incompletos", value: precargados, color: NARANJA },
         { label: "Titulares de contacto", value: titulares, color: NARANJA },
       ]
     : [
         { label: "Total residentes", value: registros.length },
-        { label: "Precargados (sin diligenciar)", value: precargados, color: NARANJA },
+        { label: "Incompletos", value: precargados, color: NARANJA },
         { label: "Con discapacidad", value: conDiscapacidad, color: NARANJA },
         { label: "Inmueble arrendado", value: arrendados, color: VERDE },
         { label: "Titulares de contacto", value: titulares },
