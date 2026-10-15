@@ -10,12 +10,12 @@ const VERDE_LIGHT = "#2E7D32";
 
 interface Registro {
   id: string;
-  tipo_documento: string;
-  numero_documento: string;
+  tipo_documento: string | null;
+  numero_documento: string | null;
   nombres: string;
   apellidos: string;
-  telefono: string;
-  fecha_nacimiento: string;
+  telefono: string | null;
+  fecha_nacimiento: string | null;
   correo_contacto: string;
   es_contacto_principal: boolean;
   inmueble_arrendado?: string;
@@ -27,6 +27,7 @@ interface Registro {
   numero_matricula?: string;
   direccion?: string;
   ciudad?: string;
+  precargado?: boolean;
 }
 
 interface Props {
@@ -114,9 +115,9 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
   const iniciarEdicion = (r: Registro) => {
     setForm({
       unidad: r.unidad || "",
-      tipo_documento: r.tipo_documento, numero_documento: r.numero_documento.toUpperCase(),
+      tipo_documento: r.tipo_documento || "", numero_documento: (r.numero_documento || "").toUpperCase(),
       nombres: r.nombres.toUpperCase(), apellidos: r.apellidos.toUpperCase(), telefono: r.telefono || "",
-      fecha_nacimiento: r.fecha_nacimiento, correo_contacto: r.correo_contacto || "",
+      fecha_nacimiento: r.fecha_nacimiento || "", correo_contacto: r.correo_contacto || "",
       numero_matricula: (r.numero_matricula || "").toUpperCase(), direccion: (r.direccion || "").toUpperCase(), ciudad: (r.ciudad || "").toUpperCase(),
       es_contacto_principal: !!r.es_contacto_principal,
       inmueble_arrendado: r.inmueble_arrendado || "",
@@ -281,9 +282,14 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
                   {r.nombres} {r.apellidos}
                   {r.es_contacto_principal && <span style={{ color: NARANJA }}> · Contacto principal</span>}
                   {r.es_titular_arriendo && <span style={{ color: NARANJA }}> · Titular del Arriendo</span>}
+                  {r.precargado && <span style={{ color: NARANJA }}> · Falta completar</span>}
                 </p>
                 <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0" }}>
-                  {r.tipo_documento} {r.numero_documento} · {calcularEdad(r.fecha_nacimiento)} años{r.telefono ? ` · ${r.telefono}` : ""}
+                  {[
+                    r.tipo_documento && r.numero_documento ? `${r.tipo_documento} ${r.numero_documento}` : null,
+                    r.fecha_nacimiento ? `${calcularEdad(r.fecha_nacimiento)} años` : null,
+                    r.telefono,
+                  ].filter(Boolean).join(" · ") || "Falta completar la información"}
                 </p>
                 {r.unidad && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{formatUnidad(r.unidad)}</p>}
                 {r.correo_contacto && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0" }}>{r.correo_contacto}</p>}

@@ -1,6 +1,6 @@
 import { getSupabase } from "@/lib/supabase";
 import { TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
-import { verificarToken } from "@/lib/sheet";
+import { verificarToken, buscarVotante } from "@/lib/sheet";
 
 // ── CHECKLIST: agregar un campo nuevo a residentes/propietarios ────────────
 // Un campo nuevo toca 4 lugares. Olvidar uno falla en silencio o revienta con
@@ -94,12 +94,24 @@ export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInpu
 
 export async function listarPorCorreo(tabla: TablaRegistro, correo: string) {
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from(tabla)
-    .select("*")
-    .eq("correo", correo.toLowerCase())
-    .eq("eliminado", false)
-    .order("created_at", { ascending: true });
+  const correoLower = correo.toLowerCase();
+
+  // Además de lo diligenciado con este correo, se traen los precargados
+  // (Nova/propietarios oficiales, ver supabase_registros.sql y la
+  // migración 20261015000000_precarga_residentes_propietarios.sql) de las
+  // mismas unidades que este correo tiene autorizadas en el Sheet de
+  // votantes. Muchos de esos precargados no tienen correo guardado (Nova
+  // nunca lo tuvo), así que filtrar solo por correo los dejaba invisibles
+  // para el propietario/residente real de esa unidad.
+  const votante = await buscarVotante(correoLower);
+  const unidades = (votante?.unidades ?? []).filter(Boolean);
+
+  let query = supabase.from(tabla).select("*").eq("eliminado", false);
+  query = unidades.length > 0
+    ? query.or(`correo.eq.${correoLower},and(precargado.eq.true,unidad.in.(${unidades.map(u => `"${u}"`).join(",")}))`)
+    : query.eq("correo", correoLower);
+
+  const { data, error } = await query.order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];
 }
@@ -133,14 +145,26 @@ export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput, 
   return data;
 }
 
+// Dueño real (correo coincide) o precargado de una unidad que este correo
+// tiene autorizada en el Sheet de votantes ("reclamar" un precargado sin
+// correo o con correo distinto, ej. el de Nova). Null-safe: existente.correo
+// puede venir null en un precargado.
+async function esPropietarioDelRegistro_(existente: { correo: string | null; precargado?: boolean; unidad?: string | null }, correo: string) {
+  if (existente.correo && existente.correo.toLowerCase() === correo.toLowerCase()) return true;
+  if (!existente.precargado || !existente.unidad) return false;
+  const votante = await buscarVotante(correo.toLowerCase());
+  return !!votante?.unidades.includes(existente.unidad);
+}
+
 export async function actualizarRegistro(tabla: TablaRegistro, id: string, correo: string, input: Partial<RegistroInput>, token: string | undefined) {
   if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
 
   const supabase = getSupabase();
-  const { data: existente, error: errBusqueda } = await supabase.from(tabla).select("correo").eq("id", id).maybeSingle();
+  const { data: existente, error: errBusqueda } = await supabase.from(tabla).select("correo,precargado,unidad").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);
   if (!existente) throw new Error("Registro no encontrado");
-  if (existente.correo.toLowerCase() !== correo.toLowerCase()) throw new Error("No autorizado para editar este registro");
+  if (!(await esPropietarioDelRegistro_(existente, correo))) throw new Error("No autorizado para editar este registro");
+  const esReclamo = existente.precargado && (!existente.correo || existente.correo.toLowerCase() !== correo.toLowerCase());
 
   if (input.es_contacto_principal) {
     await verificarFlagUnico(tabla, "es_contacto_principal", correo, "Ya hay un titular de comunicaciones seleccionado. Desmárcalo antes de elegir otro.", id);
@@ -151,7 +175,10 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
 
   const { correo: correoInput, ...resto } = input;
   void correoInput;
-  const campos = filtrarCampos(tabla, resto);
+  const campos: Record<string, unknown> = filtrarCampos(tabla, resto);
+  // Al completar un precargado pasa a ser un registro real de este correo,
+  // ya no debe seguir mostrándose como precargado ni reclamable por otro.
+  if (esReclamo) { campos.correo = correo.toLowerCase(); campos.precargado = false; }
   const { data, error } = await supabase.from(tabla).update(campos).eq("id", id).select().single();
   if (error) throw new Error(error.message);
   return data;
@@ -161,10 +188,10 @@ export async function borrarRegistro(tabla: TablaRegistro, id: string, correo: s
   if (!(await verificarToken(correo, token))) throw new Error("Token incorrecto");
 
   const supabase = getSupabase();
-  const { data: existente, error: errBusqueda } = await supabase.from(tabla).select("correo").eq("id", id).maybeSingle();
+  const { data: existente, error: errBusqueda } = await supabase.from(tabla).select("correo,precargado,unidad").eq("id", id).maybeSingle();
   if (errBusqueda) throw new Error(errBusqueda.message);
   if (!existente) throw new Error("Registro no encontrado");
-  if (existente.correo.toLowerCase() !== correo.toLowerCase()) throw new Error("No autorizado para borrar este registro");
+  if (!(await esPropietarioDelRegistro_(existente, correo))) throw new Error("No autorizado para borrar este registro");
 
   // Borrado suave: nunca se elimina de la base, solo se oculta. El admin
   // conserva el histórico completo en el reporte de "Eliminados".
