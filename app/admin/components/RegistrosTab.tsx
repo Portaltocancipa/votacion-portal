@@ -27,6 +27,7 @@ interface RegistroAdmin {
   numero_matricula?: string;
   direccion?: string;
   ciudad?: string;
+  precargado?: boolean;
   created_at: string;
 }
 
@@ -69,12 +70,17 @@ export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistros
 
   const columnas: ColumnaLista<RegistroAdmin>[] = [
     { header: "#", render: (_r, i) => i + 1 },
+    {
+      header: "Origen", render: r => r.precargado
+        ? <span style={{ background: "#fff3e0", color: NARANJA, border: `1px solid ${NARANJA}40`, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Precargado</span>
+        : <span style={{ background: "#f1f8e9", color: VERDE, border: `1px solid ${VERDE}40`, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Diligenciado</span>,
+    },
     { header: "Unidad", render: r => r.unidad ? formatUnidad(r.unidad) : "—" },
     { header: "Nombres", render: r => r.nombres },
     { header: "Apellidos", render: r => r.apellidos },
-    { header: "Documento", render: r => `${r.tipo_documento} ${r.numero_documento}` },
+    { header: "Documento", render: r => r.tipo_documento || r.numero_documento ? `${r.tipo_documento || ""} ${r.numero_documento || ""}`.trim() : "—" },
     { header: "Teléfono", render: r => r.telefono || "—" },
-    { header: "Edad", render: r => calcularEdad(r.fecha_nacimiento) },
+    { header: "Edad", render: r => r.fecha_nacimiento ? calcularEdad(r.fecha_nacimiento) : "—" },
     { header: "Correo contacto", render: r => r.correo_contacto || "—" },
     { header: "Contacto", render: r => <span style={{ color: r.es_contacto_principal ? NARANJA : "#111", fontWeight: r.es_contacto_principal ? 700 : 400 }}>{r.es_contacto_principal ? "Principal" : "—"}</span> },
     ...(esPropietarios ? [] : [
@@ -93,13 +99,14 @@ export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistros
   const exportarXLSX = () => {
     const filas = registros.map((r, i) => ({
       "#": i + 1,
+      Origen: r.precargado ? "Precargado" : "Diligenciado",
       Unidad: r.unidad ? formatUnidad(r.unidad) : "",
       Nombres: r.nombres,
       Apellidos: r.apellidos,
-      "Tipo Documento": r.tipo_documento,
-      "N° Documento": r.numero_documento,
+      "Tipo Documento": r.tipo_documento || "",
+      "N° Documento": r.numero_documento || "",
       Teléfono: r.telefono || "",
-      Edad: calcularEdad(r.fecha_nacimiento),
+      Edad: r.fecha_nacimiento ? calcularEdad(r.fecha_nacimiento) : "",
       "Correo contacto": r.correo_contacto || "",
       "Contacto principal": r.es_contacto_principal ? "Sí" : "No",
       ...(esPropietarios ? {} : {
@@ -121,14 +128,17 @@ export default function RegistrosTab({ adminHeaders, registrosTipo, setRegistros
   const conDiscapacidad = registros.filter(r => r.tiene_discapacidad === "Sí").length;
   const arrendados = registros.filter(r => r.inmueble_arrendado === "Sí").length;
   const titulares = registros.filter(r => r.es_contacto_principal).length;
+  const precargados = registros.filter(r => r.precargado).length;
 
   const resumen = verEliminados ? [] : esPropietarios
     ? [
         { label: "Total propietarios", value: registros.length },
+        { label: "Precargados (sin diligenciar)", value: precargados, color: NARANJA },
         { label: "Titulares de contacto", value: titulares, color: NARANJA },
       ]
     : [
         { label: "Total residentes", value: registros.length },
+        { label: "Precargados (sin diligenciar)", value: precargados, color: NARANJA },
         { label: "Con discapacidad", value: conDiscapacidad, color: NARANJA },
         { label: "Inmueble arrendado", value: arrendados, color: VERDE },
         { label: "Titulares de contacto", value: titulares },
