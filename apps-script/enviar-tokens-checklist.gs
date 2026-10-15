@@ -13,7 +13,8 @@
 // tablas de Supabase.
 
 function enviarPruebaConChecklist() {
-  enviarEmailsConChecklist(["3202", "8502", "8501", "7201"]);
+  // Prueba con el Consejo: unidades 1402, 8502 y 3202.
+  enviarEmailsConChecklist(["1402", "8502", "3202"]);
 }
 
 function enviarTodosConChecklist() {
