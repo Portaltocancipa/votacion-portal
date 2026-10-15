@@ -18,7 +18,7 @@ interface MascotaAdmin {
   created_at: string;
 }
 
-export default function MascotasTab({ adminHeaders }: { adminHeaders: () => Record<string, string> }) {
+export default function MascotasTab({ adminHeaders, reloadKey }: { adminHeaders: () => Record<string, string>; reloadKey?: number }) {
   const [mascotas, setMascotas] = useState<MascotaAdmin[]>([]);
   const [cargando, setCargando] = useState(false);
   const [verEliminados, setVerEliminados] = useState(false);
@@ -31,7 +31,7 @@ export default function MascotasTab({ adminHeaders }: { adminHeaders: () => Reco
     setCargando(false);
   }, [adminHeaders]);
 
-  useEffect(() => { cargar(verEliminados); }, [cargar, verEliminados]);
+  useEffect(() => { cargar(verEliminados); }, [cargar, verEliminados, reloadKey]);
 
   const restaurar = async (id: string) => {
     await fetch(`/api/admin/mascotas/${id}`, { method: "PUT", headers: adminHeaders() });

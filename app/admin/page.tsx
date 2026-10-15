@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import ResultadosTab from "./components/ResultadosTab";
 import EncuestasTab from "./components/EncuestasTab";
 import RegistrosTab from "./components/RegistrosTab";
@@ -51,6 +51,14 @@ export default function AdminPage() {
   // La clave nunca se guarda hardcodeada en el cliente: es lo que el admin
   // escribió en el login, y el servidor es quien decide si es correcta.
   const adminHeaders = useCallback(() => ({ "x-admin-key": key }), [key]);
+
+  // Respaldo del cron de /api/keepalive (best-effort en el plan Hobby de
+  // Vercel, puede saltarse un día): cada visita autenticada del admin pega
+  // una lectura real a Supabase para reforzar que el proyecto no se pause.
+  useEffect(() => {
+    if (!autenticado) return;
+    fetch("/api/keepalive").catch(() => {});
+  }, [autenticado]);
 
   const login = async () => {
     setErrorAuth("");
@@ -133,11 +141,11 @@ export default function AdminPage() {
                     </button>
                   ))}
                 </div>
-                {registrosSubTab === "registros" && <RegistrosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo}/>}
-                {registrosSubTab === "contactos" && <ContactosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo}/>}
-                {registrosSubTab === "parqueaderos" && <ParqueaderosTab adminHeaders={adminHeaders}/>}
-                {registrosSubTab === "mascotas" && <MascotasTab adminHeaders={adminHeaders}/>}
-                {registrosSubTab === "bicicletas" && <BicicletasTab adminHeaders={adminHeaders}/>}
+                {registrosSubTab === "registros" && <RegistrosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo} reloadKey={reloadKey}/>}
+                {registrosSubTab === "contactos" && <ContactosTab adminHeaders={adminHeaders} registrosTipo={registrosTipo} setRegistrosTipo={setRegistrosTipo} reloadKey={reloadKey}/>}
+                {registrosSubTab === "parqueaderos" && <ParqueaderosTab adminHeaders={adminHeaders} reloadKey={reloadKey}/>}
+                {registrosSubTab === "mascotas" && <MascotasTab adminHeaders={adminHeaders} reloadKey={reloadKey}/>}
+                {registrosSubTab === "bicicletas" && <BicicletasTab adminHeaders={adminHeaders} reloadKey={reloadKey}/>}
               </>
             )}
           </div>

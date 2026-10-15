@@ -10,9 +10,10 @@ interface Props {
   adminHeaders: () => Record<string, string>;
   registrosTipo: "residentes" | "propietarios";
   setRegistrosTipo: (t: "residentes" | "propietarios") => void;
+  reloadKey?: number;
 }
 
-export default function ContactosTab({ adminHeaders, registrosTipo, setRegistrosTipo }: Props) {
+export default function ContactosTab({ adminHeaders, registrosTipo, setRegistrosTipo, reloadKey }: Props) {
   const [registros, setRegistros] = useState<RegistroAdmin[]>([]);
   const [cargando, setCargando] = useState(false);
 
@@ -24,7 +25,7 @@ export default function ContactosTab({ adminHeaders, registrosTipo, setRegistros
     setCargando(false);
   }, [adminHeaders]);
 
-  useEffect(() => { cargar(registrosTipo); }, [cargar, registrosTipo]);
+  useEffect(() => { cargar(registrosTipo); }, [cargar, registrosTipo, reloadKey]);
 
   const esPropietarios = registrosTipo === "propietarios";
   const titulares = registros.filter(r => r.es_contacto_principal);

@@ -61,6 +61,7 @@ const FORM_INIT = {
   tiene_discapacidad: "",
   discapacidades: [] as string[],
   discapacidad_otro: "",
+  es_residente_tambien: false,
 };
 
 const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula"];
@@ -85,6 +86,8 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
   const [errorBorrado, setErrorBorrado] = useState("");
   const [error, setError] = useState("");
   const [errorCarga, setErrorCarga] = useState("");
+  const [avisoMigracion, setAvisoMigracion] = useState("");
+  const [avisoMigracionError, setAvisoMigracionError] = useState(false);
 
   const esPropietarios = tipo === "propietarios";
   const sustantivo = esPropietarios ? "propietario" : "residente";
@@ -121,6 +124,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       tiene_discapacidad: r.tiene_discapacidad || "",
       discapacidades: r.discapacidades || [],
       discapacidad_otro: r.discapacidad_otro || "",
+      es_residente_tambien: false,
     });
     setEditandoId(r.id);
     setAceptaTratamiento(true);
@@ -169,7 +173,7 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       if (form.discapacidades.includes("Otra") && !form.discapacidad_otro.trim()) { setError("Especifica la discapacidad en 'Otra'"); return; }
     }
 
-    setGuardando(true); setError("");
+    setGuardando(true); setError(""); setAvisoMigracion("");
     const payload = {
       ...form,
       es_titular_arriendo: form.inmueble_arrendado === "Sí" && form.es_titular_arriendo,
@@ -184,6 +188,46 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
     });
     const data = await res.json();
     if (data.id) {
+      // Migración propietario -> residente: solo al registrar (no al editar)
+      // un propietario que marcó el chulo. Reusa los campos comunes ya
+      // diligenciados y completa con valores por defecto los que solo
+      // aplican a residentes (editables después desde la pestaña Residentes).
+      if (esPropietarios && !editandoId && form.es_residente_tambien) {
+        try {
+          const migRes = await fetch("/api/residentes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              correo, token,
+              unidad: form.unidad,
+              tipo_documento: form.tipo_documento,
+              numero_documento: form.numero_documento,
+              nombres: form.nombres,
+              apellidos: form.apellidos,
+              telefono: form.telefono,
+              fecha_nacimiento: form.fecha_nacimiento,
+              correo_contacto: form.correo_contacto,
+              numero_matricula: form.numero_matricula,
+              ciudad: form.ciudad,
+              inmueble_arrendado: "No",
+              tiene_discapacidad: "No",
+              discapacidades: [],
+              discapacidad_otro: "",
+            }),
+          });
+          const migData = await migRes.json();
+          if (migData.id) {
+            setAvisoMigracionError(false);
+            setAvisoMigracion(`También se creó el registro de ${form.nombres} ${form.apellidos} en Residentes.`);
+          } else {
+            setAvisoMigracionError(true);
+            setAvisoMigracion(`El propietario se guardó, pero no se pudo crear el registro de residente: ${migData.error || "error desconocido"}. Puedes registrarlo manualmente en la pestaña Residentes.`);
+          }
+        } catch {
+          setAvisoMigracionError(true);
+          setAvisoMigracion("El propietario se guardó, pero no se pudo crear el registro de residente (error de conexión). Puedes registrarlo manualmente en la pestaña Residentes.");
+        }
+      }
       cancelarForm();
       cargar();
     } else {
@@ -206,6 +250,16 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
       </p>
 
       <PreregistroNota/>
+
+      {avisoMigracion && (
+        <div style={{
+          background: avisoMigracionError ? "#fff5f5" : "#f1f8e9",
+          border: `1px solid ${avisoMigracionError ? "#fca5a5" : VERDE_LIGHT}`,
+          borderRadius: 10, padding: "12px 14px", marginBottom: 16,
+        }}>
+          <p style={{ fontSize: 13, color: avisoMigracionError ? "#ef4444" : VERDE, margin: 0 }}>{avisoMigracion}</p>
+        </div>
+      )}
 
       {cargando ? (
         <p style={{ fontSize: 13, color: "#111" }}>Cargando...</p>
@@ -353,6 +407,15 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
             <input type="checkbox" checked={form.es_contacto_principal} onChange={e => setForm(f => ({ ...f, es_contacto_principal: e.target.checked }))}/>
             <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Es el titular para contacto</span>
           </label>
+
+          {esPropietarios && !editandoId && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 14 }}>
+              <input type="checkbox" checked={form.es_residente_tambien} onChange={e => setForm(f => ({ ...f, es_residente_tambien: e.target.checked }))}/>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>
+                ¿También es residente de esta unidad? Se creará su registro en Residentes con estos mismos datos.
+              </span>
+            </label>
+          )}
 
           {!esPropietarios && (
             <>
