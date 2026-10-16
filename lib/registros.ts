@@ -53,6 +53,16 @@ const CAMPOS_POR_TABLA: Record<TablaRegistro, readonly string[]> = {
   propietarios: [...CAMPOS_COMUNES, "direccion"],
 };
 
+// El formulario ya fuerza MAYÚSCULAS mientras la persona escribe
+// (RegistroModulo.tsx); esto asegura lo mismo del lado del servidor
+// (incluye lo que llega por API directa) y es lo que deja todo
+// consistente con los datos precargados de Nova, que también se
+// normalizan a mayúsculas en el backfill.
+function capitalizarNombre_(valor: string | undefined): string | undefined {
+  if (!valor) return valor;
+  return valor.trim().toUpperCase();
+}
+
 function filtrarCampos<T extends Partial<RegistroInput>>(tabla: TablaRegistro, input: T): T {
   const permitidos = CAMPOS_POR_TABLA[tabla];
   const resultado = {} as T;
@@ -144,6 +154,8 @@ export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput, 
   // que haya mandado el formulario: se ignora lo recibido y se deriva de la
   // unidad, así nadie puede editarlo ni a través de la API directamente.
   campos.numero_matricula = matriculaDeUnidad(input.unidad);
+  campos.nombres = capitalizarNombre_(input.nombres);
+  campos.apellidos = capitalizarNombre_(input.apellidos);
 
   const { data, error } = await supabase
     .from(tabla)
@@ -189,6 +201,8 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
   // ignora lo que venga en el body. Se usa la unidad nueva si la están
   // cambiando, si no la que ya tenía el registro.
   campos.numero_matricula = matriculaDeUnidad(input.unidad ?? existente.unidad);
+  if ("nombres" in campos) campos.nombres = capitalizarNombre_(input.nombres);
+  if ("apellidos" in campos) campos.apellidos = capitalizarNombre_(input.apellidos);
   // Al completar un precargado pasa a ser un registro real de este correo,
   // ya no debe seguir mostrándose como precargado ni reclamable por otro.
   if (esReclamo) { campos.correo = correo.toLowerCase(); campos.precargado = false; }
