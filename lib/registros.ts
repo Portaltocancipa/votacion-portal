@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
 import { verificarToken, buscarVotante } from "@/lib/sheet";
+import { matriculaDeUnidad } from "@/lib/matriculas";
 
 // ── CHECKLIST: agregar un campo nuevo a residentes/propietarios ────────────
 // Un campo nuevo toca 4 lugares. Olvidar uno falla en silencio o revienta con
@@ -73,7 +74,9 @@ export function validarRegistro(tabla: TablaRegistro, body: Partial<RegistroInpu
   if (!TIPOS_DOCUMENTO_SIN_CORREO.includes(body.tipo_documento) && !body.correo_contacto) {
     return "Falta el correo electrónico";
   }
-  if (!body.numero_matricula) return "Falta el número de matrícula inmobiliaria";
+  // numero_matricula ya no lo diligencia la persona: se deriva del mapa fijo
+  // en lib/matriculas.ts (dato oficial de la escritura), ver crearRegistro/
+  // actualizarRegistro. No se valida aquí porque no llega del formulario.
   if (tabla === "propietarios") {
     if (!body.direccion) return "Falta la dirección";
     if (!body.ciudad) return "Falta la ciudad";
@@ -136,9 +139,15 @@ export async function crearRegistro(tabla: TablaRegistro, input: RegistroInput, 
     await verificarFlagUnico(tabla, "es_titular_arriendo", input.correo, "Ya hay un titular del arriendo seleccionado. Desmárcalo antes de elegir otro.");
   }
 
+  const campos: Record<string, unknown> = filtrarCampos(tabla, { ...input, correo: input.correo.toLowerCase() });
+  // numero_matricula es dato oficial de la unidad (escritura pública), no lo
+  // que haya mandado el formulario: se ignora lo recibido y se deriva de la
+  // unidad, así nadie puede editarlo ni a través de la API directamente.
+  campos.numero_matricula = matriculaDeUnidad(input.unidad);
+
   const { data, error } = await supabase
     .from(tabla)
-    .insert(filtrarCampos(tabla, { ...input, correo: input.correo.toLowerCase() }))
+    .insert(campos)
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -176,6 +185,10 @@ export async function actualizarRegistro(tabla: TablaRegistro, id: string, corre
   const { correo: correoInput, ...resto } = input;
   void correoInput;
   const campos: Record<string, unknown> = filtrarCampos(tabla, resto);
+  // Igual que en crearRegistro: numero_matricula se deriva de la unidad, se
+  // ignora lo que venga en el body. Se usa la unidad nueva si la están
+  // cambiando, si no la que ya tenía el registro.
+  campos.numero_matricula = matriculaDeUnidad(input.unidad ?? existente.unidad);
   // Al completar un precargado pasa a ser un registro real de este correo,
   // ya no debe seguir mostrándose como precargado ni reclamable por otro.
   if (esReclamo) { campos.correo = correo.toLowerCase(); campos.precargado = false; }

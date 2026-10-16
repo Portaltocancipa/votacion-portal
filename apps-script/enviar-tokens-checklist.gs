@@ -262,10 +262,10 @@ function enviarEmailsConChecklist(unidadesPrueba) {
     }
 
     var aptos = p.unidades.length === 1
-      ? "el apartamento " + p.unidades[0]
-      : "los apartamentos " + p.unidades.join(", ");
+      ? "del apartamento " + p.unidades[0]
+      : "de los apartamentos " + p.unidades.join(", ");
 
-    var asunto = "Token de acceso - Asamblea Agrupacion El Portal de Tocancipa";
+    var asunto = "Urgente: Actualización de información - El Portal de Tocancipá";
     var tablaPersonasHtml = construirTablaPersonas_(key, p.unidades, estado);
     var tablaParqueaderosHtml = construirTablaParqueaderos_(key, p.unidades, estado);
     var tablaMascotasHtml = construirTablaMascotas_(key, estado);
@@ -279,8 +279,14 @@ function enviarEmailsConChecklist(unidadesPrueba) {
     h += "</div>";
     h += "<div style='padding:32px;'>";
     h += "<p style='font-size:15px;color:#111;'>Estimado(a) <strong>" + p.nombre + "</strong>,</p>";
-    h += "<p style='font-size:14px;color:#333;line-height:1.7;'>Usted esta registrado(a) frente a <strong>" + aptos + "</strong> en el sistema de la Agrupacion El Portal de Tocancipa (votaciones, residentes, propietarios, parqueaderos, mascotas y bicicletas).</p>";
-    h += "<p style='font-size:14px;color:#333;'>Para ingresar al sistema se le ha asignado el siguiente token de acceso:</p>";
+    h += "<p style='font-size:14px;color:#333;line-height:1.7;'>Usted, como propietario(a) " + aptos + ", es el (la) encargado(a) de mantener actualizada su información ante la copropiedad. Por eso se habilitó en el sistema el módulo de información, donde puede registrar o completar:</p>";
+    h += "<ul style='font-size:14px;color:#333;line-height:1.9;margin:0 0 18px;padding-left:22px;'>" +
+      "<li>Datos de propietarios</li>" +
+      "<li>Datos de residentes</li>" +
+      "<li>Mascotas que habitan el inmueble</li>" +
+      "<li>Parqueadero de su unidad</li>" +
+      "</ul>";
+    h += "<p style='font-size:14px;color:#333;'>Para ingresar use el siguiente token de acceso:</p>";
     h += "<div style='background:#fff8f0;border:2px solid #E65100;border-radius:10px;padding:20px;text-align:center;margin:24px 0;'>";
     h += "<p style='font-size:12px;color:#E65100;font-weight:700;margin:0 0 8px;'>SU TOKEN PERSONAL</p>";
     h += "<p style='font-size:36px;font-weight:900;color:#E65100;letter-spacing:4px;margin:0;'>" + p.token + "</p>";

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { calcularEdad, TIPOS_DOCUMENTO, TIPOS_DOCUMENTO_SIN_CORREO } from "@/lib/edad";
 import { formatUnidad } from "@/lib/unidad";
+import { matriculaDeUnidad } from "@/lib/matriculas";
 import PreregistroNota from "./PreregistroNota";
 
 const VERDE = "#1B5E20";
@@ -65,7 +66,9 @@ const FORM_INIT = {
   es_residente_tambien: false,
 };
 
-const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento", "numero_matricula"];
+// numero_matricula no se valida aquí: es de solo lectura, se deriva de la
+// unidad (ver matriculaDeUnidad) y el servidor la recalcula de todas formas.
+const CAMPOS_REQUERIDOS_COMUNES: (keyof typeof FORM_INIT)[] = ["unidad", "tipo_documento", "numero_documento", "nombres", "apellidos", "telefono", "fecha_nacimiento"];
 const CAMPOS_REQUERIDOS_PROPIETARIOS: (keyof typeof FORM_INIT)[] = ["direccion", "ciudad"];
 const CAMPOS_REQUERIDOS_RESIDENTES: (keyof typeof FORM_INIT)[] = ["inmueble_arrendado", "tiene_discapacidad"];
 
@@ -334,7 +337,10 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
 
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle}>Unidad</label>
-            <select value={form.unidad} onChange={e => setForm(f => ({ ...f, unidad: e.target.value }))} style={inputStyle}>
+            <select value={form.unidad} onChange={e => {
+              const val = e.target.value;
+              setForm(f => ({ ...f, unidad: val, numero_matricula: matriculaDeUnidad(val) || "" }));
+            }} style={inputStyle}>
               <option value="">Selecciona...</option>
               {unidades.map(u => <option key={u} value={u}>{formatUnidad(u)}</option>)}
             </select>
@@ -392,7 +398,13 @@ export default function RegistroModulo({ tipo, titulo, correo, unidades, token, 
           <div style={{ display: "grid", gridTemplateColumns: esPropietarios ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
             <div>
               <label style={labelStyle}>Número de matrícula inmobiliaria</label>
-              <input value={form.numero_matricula} onChange={e => setForm(f => ({ ...f, numero_matricula: e.target.value.toUpperCase() }))} style={inputStyle}/>
+              <input
+                value={form.numero_matricula || (form.unidad ? "No disponible" : "Selecciona primero la unidad")}
+                readOnly
+                disabled
+                style={{ ...inputStyle, background: "#f0f0f0", color: "#666", cursor: "not-allowed" }}
+              />
+              <p style={{ fontSize: 11, color: "#888", margin: "4px 0 0" }}>Dato oficial de la escritura, no editable.</p>
             </div>
             {esPropietarios && (
               <div>
