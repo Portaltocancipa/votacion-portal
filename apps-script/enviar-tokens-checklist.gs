@@ -33,22 +33,32 @@ function programarEnvioMasivoConChecklist() {
 }
 
 // ── Estado en Supabase (residentes/propietarios/parqueaderos/mascotas/
-// bicicletas), por correo ──────────────────────────────────────────────
+// bicicletas) ───────────────────────────────────────────────────────────
 //
 // Una sola consulta por tabla (no una por persona) para no gastar cuota
 // de UrlFetchApp: se trae toda la tabla y se arma un mapa local
-// correo -> filas. residentes/propietarios además distinguen "completo"
-// (diligenciado por la persona) de "precargado" (solo el dato que ya
-// teníamos de Nova/propietarios oficiales, ver supabase_registros.sql y
-// la migración 20261015000000_precarga_residentes_propietarios.sql).
-var TABLAS_ESTADO = ["propietarios", "residentes", "parqueaderos", "mascotas", "bicicletas"];
+// correo -> filas, más un segundo mapa unidad -> precargados (residentes/
+// propietarios distinguen "completo", diligenciado por la persona, de
+// "precargado", el dato que ya teníamos de Nova/propietarios oficiales;
+// ver supabase_registros.sql y la migración
+// 20261015000000_precarga_residentes_propietarios.sql -- las demás tablas
+// no tienen ese concepto, nunca se precargaron).
+//
+// Cada módulo tiene su propio set de columnas relevantes:
+//   Propietario / Residente -> nombre, documento, teléfono, correo
+//   Parqueadero             -> dueño, marca, placa
+//   Mascotas                -> mascota, especie
+//   Bicicletas              -> resumen simple (cuántas)
+var CAMPOS_POR_TABLA = {
+  propietarios: "correo,unidad,nombres,apellidos,telefono,numero_documento,precargado",
+  residentes: "correo,unidad,nombres,apellidos,telefono,numero_documento,precargado",
+  parqueaderos: "correo,unidad,nombres,apellidos,marca,placa",
+  mascotas: "correo,unidad,nombre,especie",
+  bicicletas: "correo,unidad",
+};
+var TABLAS_CON_PRECARGADO = ["propietarios", "residentes"];
+var TABLAS_ESTADO = Object.keys(CAMPOS_POR_TABLA);
 
-// Devuelve { porCorreo, porUnidadPrecargado }. porCorreo indexa por el
-// correo guardado en cada fila (como antes). porUnidadPrecargado indexa
-// además los precargados por unidad, sin importar su correo (muchos no
-// tienen, ver nota arriba) -- así se puede cruzar contra las unidades que
-// el Sheet de votantes autoriza para cada correo, igual que ya hace
-// lib/registros.ts (listarPorCorreo) en la app.
 function cargarEstado_() {
   var props = PropertiesService.getScriptProperties();
   var url = props.getProperty("SUPABASE_URL");
@@ -59,7 +69,7 @@ function cargarEstado_() {
   var porUnidadPrecargado = {};
 
   TABLAS_ESTADO.forEach(function(tabla) {
-    var endpoint = url + "/rest/v1/" + tabla + "?select=correo,unidad,precargado&eliminado=eq.false";
+    var endpoint = url + "/rest/v1/" + tabla + "?select=" + CAMPOS_POR_TABLA[tabla] + "&eliminado=eq.false";
     var resp = UrlFetchApp.fetch(endpoint, {
       headers: { apikey: key, Authorization: "Bearer " + key },
       muteHttpExceptions: true,
@@ -71,14 +81,26 @@ function cargarEstado_() {
     var filas = JSON.parse(resp.getContentText());
     filas.forEach(function(f) {
       var correo = String(f.correo || "").toLowerCase();
-      var registro = { unidad: f.unidad, precargado: !!f.precargado };
+      var registro = {
+        unidad: f.unidad,
+        precargado: !!f.precargado, // solo existe en propietarios/residentes
+        nombres: f.nombres || "",
+        apellidos: f.apellidos || "",
+        telefono: f.telefono || "",
+        numero_documento: f.numero_documento || "",
+        marca: f.marca || "",
+        placa: f.placa || "",
+        nombreMascota: f.nombre || "",
+        especie: f.especie || "",
+        correo: f.correo || "",
+      };
 
       if (correo) {
         if (!porCorreo[correo]) porCorreo[correo] = {};
         if (!porCorreo[correo][tabla]) porCorreo[correo][tabla] = [];
         porCorreo[correo][tabla].push(registro);
       }
-      if (f.precargado && f.unidad) {
+      if (TABLAS_CON_PRECARGADO.indexOf(tabla) !== -1 && f.precargado && f.unidad) {
         if (!porUnidadPrecargado[f.unidad]) porUnidadPrecargado[f.unidad] = {};
         if (!porUnidadPrecargado[f.unidad][tabla]) porUnidadPrecargado[f.unidad][tabla] = [];
         porUnidadPrecargado[f.unidad][tabla].push(registro);
@@ -97,52 +119,109 @@ var ETIQUETA_TABLA = {
   bicicletas: "Bicicletas",
 };
 
-// Devuelve el bloque HTML del checklist para una persona: lo que tiene
-// guardado con su correo, más los precargados de sus unidades (aunque
-// esos precargados no tengan correo o tengan uno distinto -- es lo mismo
-// que la persona ya ve en su cuenta dentro de la app).
-function construirChecklistHtml_(correo, unidadesPersona, estado) {
-  var deCorreo = estado.porCorreo[correo] || {};
-
-  var filas = TABLAS_ESTADO.map(function(tabla) {
-    var registros = (deCorreo[tabla] || []).slice();
+// Junta lo que la persona tiene con su correo + los precargados de sus
+// unidades (deduplicados). Para parqueaderos/mascotas/bicicletas (sin
+// concepto de precargado) esto es simplemente lo que tiene por correo.
+function registrosDeModulo_(tabla, correo, unidadesPersona, estado) {
+  var deCorreo = (estado.porCorreo[correo] && estado.porCorreo[correo][tabla]) || [];
+  var registros = deCorreo.slice();
+  if (TABLAS_CON_PRECARGADO.indexOf(tabla) !== -1) {
     unidadesPersona.forEach(function(u) {
       var precargadosUnidad = (estado.porUnidadPrecargado[u] && estado.porUnidadPrecargado[u][tabla]) || [];
       registros = registros.concat(precargadosUnidad);
     });
-    // Puede repetirse si el mismo precargado ya se trajo por correo y por
-    // unidad; dedup simple por unidad+precargado, suficiente para el conteo.
-    var vistos = {};
-    registros = registros.filter(function(r) {
-      var k = r.unidad + "|" + r.precargado;
-      if (vistos[k]) return false;
-      vistos[k] = true;
-      return true;
+  }
+  var vistos = {};
+  return registros.filter(function(r) {
+    var k = r.unidad + "|" + r.nombres + "|" + r.apellidos + "|" + r.placa + "|" + r.nombreMascota + "|" + r.precargado;
+    if (vistos[k]) return false;
+    vistos[k] = true;
+    return true;
+  });
+}
+
+function filaVacia_(colspan, etiqueta) {
+  return "<tr>" +
+    "<td style='padding:6px 8px;font-size:12px;color:#111;font-weight:600;'>" + etiqueta + "</td>" +
+    "<td colspan='" + colspan + "' style='padding:6px 8px;font-size:12px;color:#999;'>—</td>" +
+    "<td style='padding:6px 8px;font-size:12px;color:#999;font-weight:600;'>Sin registrar</td>" +
+    "</tr>";
+}
+
+function tablaHtml_(encabezados, filasHtml) {
+  var ths = encabezados.map(function(h) { return "<th style='padding:6px 8px;text-align:left;'>" + h + "</th>"; }).join("");
+  return "<table style='width:100%;border-collapse:collapse;margin:10px 0 20px;font-size:12px;'>" +
+    "<tr style='background:#f5f5f5;'>" + ths + "</tr>" +
+    filasHtml.join("") +
+    "</table>";
+}
+
+// Propietario / Residente: Módulo, Nombre, Documento, Teléfono, Correo, Estado
+function construirTablaPersonas_(correo, unidadesPersona, estado) {
+  var filas = [];
+  ["propietarios", "residentes"].forEach(function(tabla) {
+    var registros = registrosDeModulo_(tabla, correo, unidadesPersona, estado);
+    if (registros.length === 0) { filas.push(filaVacia_(4, ETIQUETA_TABLA[tabla])); return; }
+    registros.forEach(function(r) {
+      var nombreCompleto = (r.nombres + " " + r.apellidos).trim() || "—";
+      var estadoTxt = r.precargado ? "⚠️ Falta completar" : "✅ Completo";
+      var estadoColor = r.precargado ? "#E65100" : "#1B5E20";
+      filas.push(
+        "<tr>" +
+        "<td style='padding:6px 8px;font-size:12px;color:#111;font-weight:600;'>" + ETIQUETA_TABLA[tabla] + (r.unidad ? " (" + r.unidad + ")" : "") + "</td>" +
+        "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + nombreCompleto + "</td>" +
+        "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.numero_documento || "—") + "</td>" +
+        "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.telefono || "—") + "</td>" +
+        "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.correo || "—") + "</td>" +
+        "<td style='padding:6px 8px;font-size:12px;color:" + estadoColor + ";font-weight:600;'>" + estadoTxt + "</td>" +
+        "</tr>"
+      );
     });
+  });
+  return tablaHtml_(["Módulo", "Nombre", "Documento", "Teléfono", "Correo", "Estado"], filas);
+}
 
-    var reales = registros.filter(function(r) { return !r.precargado; });
-    var unidades = registros.map(function(r) { return r.unidad; }).filter(Boolean);
-    var unidadesUnicas = unidades.filter(function(u, i) { return unidades.indexOf(u) === i; });
-
-    var icono, texto, color;
-    if (reales.length > 0) {
-      icono = "✅"; color = "#1B5E20";
-      texto = "Completo" + (unidadesUnicas.length ? " (" + unidadesUnicas.join(", ") + ")" : "");
-    } else if (registros.length > 0) {
-      icono = "⚠️"; color = "#E65100";
-      texto = "Pendiente por completar" + (unidadesUnicas.length ? " (" + unidadesUnicas.join(", ") + ")" : "");
-    } else {
-      icono = "—"; color = "#999";
-      texto = "Sin registrar";
-    }
-
+// Parqueadero: Unidad, Dueño, Marca, Placa, Estado
+function construirTablaParqueaderos_(correo, unidadesPersona, estado) {
+  var registros = registrosDeModulo_("parqueaderos", correo, unidadesPersona, estado);
+  if (registros.length === 0) return tablaHtml_(["Unidad", "Dueño", "Marca", "Placa", "Estado"], [filaVacia_(3, "Parqueadero")]);
+  var filas = registros.map(function(r) {
+    var nombreCompleto = (r.nombres + " " + r.apellidos).trim() || "—";
     return "<tr>" +
-      "<td style='padding:6px 8px;font-size:13px;color:#111;'>" + icono + " " + ETIQUETA_TABLA[tabla] + "</td>" +
-      "<td style='padding:6px 8px;font-size:13px;color:" + color + ";font-weight:600;'>" + texto + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.unidad || "—") + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + nombreCompleto + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.marca || "—") + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.placa || "—") + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#1B5E20;font-weight:600;'>✅ Completo</td>" +
       "</tr>";
-  }).join("");
+  });
+  return tablaHtml_(["Unidad", "Dueño", "Marca", "Placa", "Estado"], filas);
+}
 
-  return "<table style='width:100%;border-collapse:collapse;margin:20px 0;'>" + filas + "</table>";
+// Mascotas: Unidad, Mascota, Especie, Estado
+function construirTablaMascotas_(correo, estado) {
+  var registros = (estado.porCorreo[correo] && estado.porCorreo[correo].mascotas) || [];
+  if (registros.length === 0) return tablaHtml_(["Unidad", "Mascota", "Especie", "Estado"], [filaVacia_(2, "Mascotas")]);
+  var filas = registros.map(function(r) {
+    return "<tr>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.unidad || "—") + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.nombreMascota || "—") + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#111;'>" + (r.especie || "—") + "</td>" +
+      "<td style='padding:6px 8px;font-size:12px;color:#1B5E20;font-weight:600;'>✅ Completo</td>" +
+      "</tr>";
+  });
+  return tablaHtml_(["Unidad", "Mascota", "Especie", "Estado"], filas);
+}
+
+// Bicicletas: resumen simple (no se pidió detalle para esta).
+function construirResumenBicicletas_(correo, estado) {
+  var registros = (estado.porCorreo[correo] && estado.porCorreo[correo].bicicletas) || [];
+  var icono = registros.length > 0 ? "✅" : "—";
+  var color = registros.length > 0 ? "#1B5E20" : "#999";
+  var texto = registros.length > 0 ? registros.length + " registrada(s)" : "Sin registrar";
+  return "<p style='font-size:13px;margin:0 0 20px;'>" +
+    "<strong>Bicicletas:</strong> <span style='color:" + color + ";font-weight:600;'>" + icono + " " + texto + "</span>" +
+    "</p>";
 }
 
 function enviarEmailsConChecklist(unidadesPrueba) {
@@ -187,10 +266,13 @@ function enviarEmailsConChecklist(unidadesPrueba) {
       : "los apartamentos " + p.unidades.join(", ");
 
     var asunto = "Token de acceso - Asamblea Agrupacion El Portal de Tocancipa";
-    var checklistHtml = construirChecklistHtml_(key, p.unidades, estado);
+    var tablaPersonasHtml = construirTablaPersonas_(key, p.unidades, estado);
+    var tablaParqueaderosHtml = construirTablaParqueaderos_(key, p.unidades, estado);
+    var tablaMascotasHtml = construirTablaMascotas_(key, estado);
+    var resumenBicicletasHtml = construirResumenBicicletas_(key, estado);
 
     var h = "";
-    h += "<div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;'>";
+    h += "<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;'>";
     h += "<div style='background:#1B5E20;padding:28px 32px;text-align:center;'>";
     h += "<p style='color:rgba(255,255,255,0.7);font-size:11px;margin:0 0 8px;'>Agrupacion El Portal - Tocancipa</p>";
     h += "<h1 style='color:#fff;font-size:20px;margin:0;'>Sistema de Gestion El Portal</h1>";
@@ -207,8 +289,11 @@ function enviarEmailsConChecklist(unidadesPrueba) {
     h += "<p style='font-size:13px;color:#333;margin:0;'>Este token unicamente lo conoce usted. Si tiene apoderado para el dia de la asamblea, debera compartirselo para que pueda votar en su nombre.</p>";
     h += "</div>";
     h += "<p style='font-size:14px;color:#333;margin:24px 0 0;'><strong>Asi esta su informacion hoy en el sistema:</strong></p>";
-    h += checklistHtml;
-    h += "<p style='font-size:13px;color:#666;'>Si ve algo en <span style='color:#E65100;font-weight:700;'>Pendiente por completar</span> o <span style='color:#999;'>Sin registrar</span>, entre con su token y complete esa informacion.</p>";
+    h += tablaPersonasHtml;
+    h += tablaParqueaderosHtml;
+    h += tablaMascotasHtml;
+    h += resumenBicicletasHtml;
+    h += "<p style='font-size:13px;color:#666;'>Si ve algo en <span style='color:#E65100;font-weight:700;'>Falta completar</span> o <span style='color:#999;'>Sin registrar</span>, entre con su token y complete esa informacion.</p>";
     h += "<div style='text-align:center;margin:24px 0;'>";
     h += "<a href='https://gestion-elportaltocancipa.vercel.app' style='background:#1B5E20;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:700;display:inline-block;'>Acceder y completar mi informacion</a>";
     h += "</div>";
