@@ -43,13 +43,20 @@ function programarEnvioMasivoConChecklist() {
 // la migración 20261015000000_precarga_residentes_propietarios.sql).
 var TABLAS_ESTADO = ["propietarios", "residentes", "parqueaderos", "mascotas", "bicicletas"];
 
-function cargarEstadoPorCorreo_() {
+// Devuelve { porCorreo, porUnidadPrecargado }. porCorreo indexa por el
+// correo guardado en cada fila (como antes). porUnidadPrecargado indexa
+// además los precargados por unidad, sin importar su correo (muchos no
+// tienen, ver nota arriba) -- así se puede cruzar contra las unidades que
+// el Sheet de votantes autoriza para cada correo, igual que ya hace
+// lib/registros.ts (listarPorCorreo) en la app.
+function cargarEstado_() {
   var props = PropertiesService.getScriptProperties();
   var url = props.getProperty("SUPABASE_URL");
   var key = props.getProperty("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) throw new Error("Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY en las propiedades del script.");
 
-  var estado = {}; // correo -> { propietarios: [...], residentes: [...], ... }
+  var porCorreo = {};
+  var porUnidadPrecargado = {};
 
   TABLAS_ESTADO.forEach(function(tabla) {
     var endpoint = url + "/rest/v1/" + tabla + "?select=correo,unidad,precargado&eliminado=eq.false";
@@ -64,14 +71,22 @@ function cargarEstadoPorCorreo_() {
     var filas = JSON.parse(resp.getContentText());
     filas.forEach(function(f) {
       var correo = String(f.correo || "").toLowerCase();
-      if (!correo) return;
-      if (!estado[correo]) estado[correo] = {};
-      if (!estado[correo][tabla]) estado[correo][tabla] = [];
-      estado[correo][tabla].push({ unidad: f.unidad, precargado: !!f.precargado });
+      var registro = { unidad: f.unidad, precargado: !!f.precargado };
+
+      if (correo) {
+        if (!porCorreo[correo]) porCorreo[correo] = {};
+        if (!porCorreo[correo][tabla]) porCorreo[correo][tabla] = [];
+        porCorreo[correo][tabla].push(registro);
+      }
+      if (f.precargado && f.unidad) {
+        if (!porUnidadPrecargado[f.unidad]) porUnidadPrecargado[f.unidad] = {};
+        if (!porUnidadPrecargado[f.unidad][tabla]) porUnidadPrecargado[f.unidad][tabla] = [];
+        porUnidadPrecargado[f.unidad][tabla].push(registro);
+      }
     });
   });
 
-  return estado;
+  return { porCorreo: porCorreo, porUnidadPrecargado: porUnidadPrecargado };
 }
 
 var ETIQUETA_TABLA = {
@@ -82,12 +97,29 @@ var ETIQUETA_TABLA = {
   bicicletas: "Bicicletas",
 };
 
-// Devuelve el bloque HTML del checklist para una persona, a partir de lo
-// que ya está en Supabase (estadoPersona = estado[correo], puede venir
-// undefined si no tiene nada registrado todavía).
-function construirChecklistHtml_(estadoPersona) {
+// Devuelve el bloque HTML del checklist para una persona: lo que tiene
+// guardado con su correo, más los precargados de sus unidades (aunque
+// esos precargados no tengan correo o tengan uno distinto -- es lo mismo
+// que la persona ya ve en su cuenta dentro de la app).
+function construirChecklistHtml_(correo, unidadesPersona, estado) {
+  var deCorreo = estado.porCorreo[correo] || {};
+
   var filas = TABLAS_ESTADO.map(function(tabla) {
-    var registros = (estadoPersona && estadoPersona[tabla]) || [];
+    var registros = (deCorreo[tabla] || []).slice();
+    unidadesPersona.forEach(function(u) {
+      var precargadosUnidad = (estado.porUnidadPrecargado[u] && estado.porUnidadPrecargado[u][tabla]) || [];
+      registros = registros.concat(precargadosUnidad);
+    });
+    // Puede repetirse si el mismo precargado ya se trajo por correo y por
+    // unidad; dedup simple por unidad+precargado, suficiente para el conteo.
+    var vistos = {};
+    registros = registros.filter(function(r) {
+      var k = r.unidad + "|" + r.precargado;
+      if (vistos[k]) return false;
+      vistos[k] = true;
+      return true;
+    });
+
     var reales = registros.filter(function(r) { return !r.precargado; });
     var unidades = registros.map(function(r) { return r.unidad; }).filter(Boolean);
     var unidadesUnicas = unidades.filter(function(u, i) { return unidades.indexOf(u) === i; });
@@ -118,7 +150,7 @@ function enviarEmailsConChecklist(unidadesPrueba) {
   var sheet = ss.getSheets()[0];
   var data  = sheet.getDataRange().getValues();
 
-  var estadoPorCorreo = cargarEstadoPorCorreo_();
+  var estado = cargarEstado_();
 
   var porCorreo = {};
   for (var i = 1; i < data.length; i++) {
@@ -155,7 +187,7 @@ function enviarEmailsConChecklist(unidadesPrueba) {
       : "los apartamentos " + p.unidades.join(", ");
 
     var asunto = "Token de acceso - Asamblea Agrupacion El Portal de Tocancipa";
-    var checklistHtml = construirChecklistHtml_(estadoPorCorreo[key]);
+    var checklistHtml = construirChecklistHtml_(key, p.unidades, estado);
 
     var h = "";
     h += "<div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;'>";
