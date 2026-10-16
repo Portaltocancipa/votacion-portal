@@ -184,5 +184,10 @@ function formatearCelda_(valor) {
   if (valor === null || valor === undefined) return '';
   if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
   if (Array.isArray(valor)) return valor.join(', ');
+  // Un texto que empieza con = + - @ lo toma Sheets como el inicio de una
+  // fórmula (ej. un teléfono "+57 315 2337126" queda en #ERROR!). El '
+  // al inicio fuerza que quede como texto plano, igual que al escribirlo
+  // a mano en una celda.
+  if (typeof valor === 'string' && /^[=+\-@]/.test(valor)) return "'" + valor;
   return valor;
 }
